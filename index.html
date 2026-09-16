@@ -33,11 +33,12 @@
     border-radius:50px; padding:12px 18px; font-size:15px; font-weight:bold;
     box-shadow:0 4px 12px rgba(0,0,0,0.4); cursor:pointer;
   }
-  #saveBtn  { bottom:70px; right:12px; background:#e53935; }
-  #listBtn  { bottom:70px; left:12px; background:#43a047; }
-  #trackBtn { bottom:125px; right:12px; background:#8e24aa; }
-  #compassBtn { bottom:125px; left:12px; background:#f57c00; }
-  #nightBtn { bottom:180px; right:12px; background:#37474f; }
+  #saveBtn     { bottom:70px;  right:12px; background:#e53935; }
+  #listBtn     { bottom:70px;  left:12px;  background:#43a047; }
+  #trackBtn    { bottom:125px; right:12px; background:#8e24aa; }
+  #compassBtn  { bottom:125px; left:12px;  background:#f57c00; }
+  #nightBtn    { bottom:180px; right:12px; background:#37474f; }
+  #startBtn    { bottom:180px; left:12px;  background:#00897b; }
   #compass {
     position:fixed; top:70px; left:50%; transform:translateX(-50%);
     z-index:1001; display:none; text-align:center;
@@ -102,6 +103,7 @@
 <button class="fab" id="trackBtn">🛤️ مسار</button>
 <button class="fab" id="compassBtn">🧭 بوصلة</button>
 <button class="fab" id="nightBtn">🌙 ليلي</button>
+<button class="fab" id="startBtn">📍 انطلاق</button>
 
 <div id="bottombar">
   <div class="stat"><div class="val" id="speed">--</div><div class="lbl">السرعة كم/س</div></div>
@@ -118,24 +120,21 @@
 </div>
 
 <div id="msg"></div>
-
 <script>
 // ===== الخريطة =====
 var map = L.map('map').setView([35.8, 10.6], 14);
-var tile = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
   maxZoom: 19, attribution: 'Esri'
 }).addTo(map);
 
-var meMarker = L.circleMarker([35.8, 10.6], {
-  radius: 10, color: '#ff1744', fillColor: '#ff5252', fillOpacity: 0.9
-}).addTo(map);
+var meMarker = L.circleMarker([35.8, 10.6], { radius:10, color:'#ff1744', fillColor:'#ff5252', fillOpacity:0.9 }).addTo(map);
 var destMarker = null, line = null;
-var myPos = { lat: 35.8, lng: 10.6 };
+var myPos = { lat:35.8, lng:10.6 };
 var currentDest = null;
+var weatherOnce = false;
 
 // ===== نقاط الصيد =====
 var spots = JSON.parse(localStorage.getItem('fishingSpots') || '[]');
-
 function showMsg(txt) {
   var m = document.getElementById('msg');
   m.textContent = txt; m.style.display = 'block';
@@ -145,47 +144,36 @@ function saveSpots() {
   localStorage.setItem('fishingSpots', JSON.stringify(spots));
   document.getElementById('spots').textContent = spots.length;
 }
-
 var spotMarkers = [];
 function drawSpots() {
   spotMarkers.forEach(function(m){ map.removeLayer(m); });
   spotMarkers = [];
   spots.forEach(function(s) {
     var m = L.marker([s.lat, s.lng], {
-      icon: L.divIcon({ html: '🚩', className: '', iconSize: [24,24] })
+      icon: L.divIcon({ html:'🚩', className:'', iconSize:[24,24] })
     }).addTo(map).bindPopup('🚩 ' + s.name);
     spotMarkers.push(m);
   });
 }
-
-// قائمة النقاط مع تسمية مخصصة ✏️
 function renderList() {
   var el = document.getElementById('spotList');
   el.innerHTML = '';
-  if (spots.length === 0) {
-    el.innerHTML = '<p style="text-align:center;opacity:0.6;">لا توجد نقاط محفوظة بعد</p>';
-  }
+  if (spots.length === 0) el.innerHTML = '<p style="text-align:center;opacity:0.6;">لا توجد نقاط محفوظة بعد</p>';
   spots.forEach(function(s, i) {
     var d = new Date(s.t);
     var div = document.createElement('div');
     div.className = 'spot';
     var left = document.createElement('div');
     left.style.flex = '1';
-    left.innerHTML = '🚩 <b>' + s.name + '</b><br><small>' +
-      d.toLocaleDateString() + ' ' + d.toLocaleTimeString() + '</small>';
+    left.innerHTML = '🚩 <b>' + s.name + '</b><br><small>' + d.toLocaleDateString() + ' ' + d.toLocaleTimeString() + '</small>';
     var inp = document.createElement('input');
-    inp.className = 'nameInput';
-    inp.value = s.name;
-    inp.onchange = function() {
-      s.name = inp.value || s.name;
-      saveSpots(); drawSpots();
-      showMsg('✏️ تمت إعادة التسمية');
-    };
+    inp.className = 'nameInput'; inp.value = s.name;
+    inp.onchange = function() { s.name = inp.value || s.name; saveSpots(); drawSpots(); showMsg('✏️ تمت إعادة التسمية'); };
     left.appendChild(inp);
     var box = document.createElement('span');
     var go = document.createElement('button');
     go.className = 'goBtn'; go.textContent = '🎯';
-    go.onclick = function() { setDestination(s.lat, s.lng); panel.style.display='none'; };
+    go.onclick = function() { setDestination(s.lat, s.lng); panel.style.display = 'none'; };
     var del = document.createElement('button');
     del.className = 'delBtn'; del.textContent = '🗑';
     del.onclick = function() { spots.splice(i,1); saveSpots(); renderList(); drawSpots(); };
@@ -194,12 +182,9 @@ function renderList() {
     el.appendChild(div);
   });
 }
-
 var panel = document.getElementById('panel');
-document.getElementById('listBtn').onclick = function() { renderList(); panel.style.display='block'; };
-document.getElementById('closePanel').onclick = function() { panel.style.display='none'; };
-
-// حفظ نقطة مع اسم
+document.getElementById('listBtn').onclick = function(){ renderList(); panel.style.display = 'block'; };
+document.getElementById('closePanel').onclick = function(){ panel.style.display = 'none'; };
 document.getElementById('saveBtn').onclick = function() {
   var n = spots.length + 1;
   var name = prompt('اسم النقطة:', 'نقطة ' + n);
@@ -213,82 +198,126 @@ document.getElementById('saveBtn').onclick = function() {
 function setDestination(lat, lng) {
   if (destMarker) map.removeLayer(destMarker);
   if (line) map.removeLayer(line);
-  destMarker = L.marker([lat, lng], {
-    icon: L.divIcon({ html: '🎯', className: '', iconSize: [28,28] })
-  }).addTo(map);
-  line = L.polyline([[myPos.lat, myPos.lng], [lat, lng]], { color: '#ffeb3b', dashArray: '8 8' }).addTo(map);
-  currentDest = { lat: lat, lng: lng };
+  destMarker = L.marker([lat, lng], { icon: L.divIcon({ html:'🎯', className:'', iconSize:[28,28] }) }).addTo(map);
+  line = L.polyline([[myPos.lat, myPos.lng],[lat, lng]], { color:'#ffeb3b', dashArray:'8 8' }).addTo(map);
+  currentDest = { lat:lat, lng:lng };
+  updateStartLine();
 }
-map.on('click', function(e) { setDestination(e.latlng.lat, e.latlng.lng); });
+map.on('click', function(e) {
+  if (startMode) {
+    startMode = false;
+    setStart(e.latlng.lat, e.latlng.lng);
+  } else {
+    setDestination(e.latlng.lat, e.latlng.lng);
+  }
+});
 
 function dist(a, b) {
   var R = 6371000, r = Math.PI/180;
   var dLa = (b.lat-a.lat)*r, dLo = (b.lng-a.lng)*r;
-  var x = Math.sin(dLa/2)**2 + Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLo/2)**2;
+  var x = Math.sin(dLa/2)*Math.sin(dLa/2) + Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin(dLo/2)*Math.sin(dLo/2);
   return 2*R*Math.asin(Math.sqrt(x));
 }
 function bearing(a, b) {
   var r = Math.PI/180;
-  var y = Math.sin((b.lng-a.lng)*r) * Math.cos(b.lat*r);
+  var y = Math.sin((b.lng-a.lng)*r)*Math.cos(b.lat*r);
   var x = Math.cos(a.lat*r)*Math.sin(b.lat*r) - Math.sin(a.lat*r)*Math.cos(b.lat*r)*Math.cos((b.lng-a.lng)*r);
   return (Math.atan2(y, x)*180/Math.PI + 360) % 360;
 }
 
-// =====// ===== GPS =====
+// ===== نقطة الانطلاق اليدوية 📍 =====
+var startMode = false, startPos = null, startMarker = null, lineToStart = null;
+document.getElementById('startBtn').onclick = function() {
+  var choice = prompt(
+    'اختر طريقة تحديد نقطة الانطلاق:\n' +
+    '1 = من موقعك الحالي (GPS)\n' +
+    '2 = أدخل إحداثيات (lat,lng)\n' +
+    '3 = حدد على الخريطة (اضغط موافق ثم اضغط على الخريطة)\n' +
+    '0 = إلغاء نقطة الانطلاق'
+  );
+  if (choice === '1') {
+    setStart(myPos.lat, myPos.lng);
+  } else if (choice === '2') {
+    var coords = prompt('أدخل الإحداثيات بالشكل: 35.8251, 10.6369');
+    if (coords) {
+      var parts = coords.split(',');
+      var la = parseFloat(parts[0]), ln = parseFloat(parts[1]);
+      if (!isNaN(la) && !isNaN(ln)) setStart(la, ln);
+      else showMsg('⚠️ إحداثيات غير صحيحة');
+    }
+  } else if (choice === '3') {
+    startMode = true;
+    showMsg('👆 اضغط على الخريطة لتحديد نقطة الانطلاق');
+  } else if (choice === '0') {
+    startPos = null;
+    if (startMarker) { map.removeLayer(startMarker); startMarker = null; }
+    if (lineToStart) { map.removeLayer(lineToStart); lineToStart = null; }
+    showMsg('🗑 تم إلغاء نقطة الانطلاق');
+  }
+};
+function setStart(lat, lng) {
+  startPos = { lat: lat, lng: lng };
+  if (startMarker) map.removeLayer(startMarker);
+  startMarker = L.circleMarker([lat, lng], {
+    radius: 9, color: '#00e676', fillColor: '#69f0ae', fillOpacity: 0.9
+  }).addTo(map).bindPopup('📍 نقطة الانطلاق');
+  updateStartLine();
+  showMsg('✅ نقطة الانطلاق محددة');
+}
+function updateStartLine() {
+  if (lineToStart) { map.removeLayer(lineToStart); lineToStart = null; }
+  if (startPos && currentDest) {
+    lineToStart = L.polyline([[startPos.lat, startPos.lng],[currentDest.lat, currentDest.lng]],
+      { color:'#69f0ae', dashArray:'4 8' }).addTo(map);
+    var d = dist(startPos, currentDest);
+    showMsg('📏 من الانطلاق للوجهة: ' + (d < 1000 ? Math.round(d) + ' م' : (d/1000).toFixed(2) + ' كم'));
+  }
+}
+
+// ===== GPS =====
 var lastPos = null, lastT = null;
 function onPos(p) {
-  myPos = { lat: p.coords.latitude, lng: p.coords.longitude };
+  myPos = { lat:p.coords.latitude, lng:p.coords.longitude };
   meMarker.setLatLng([myPos.lat, myPos.lng]);
-  var acc = Math.round(p.coords.accuracy);
-  document.getElementById('topbar').innerHTML =
-    '🎯 دقة GPS: ' + acc + ' م — اضغط على الخريطة لتحديد الوجهة';
+  document.getElementById('topbar').innerHTML = '🎯 دقة GPS: ' + Math.round(p.coords.accuracy) + ' م';
 
-  // السرعة
-  var sp = p.coords.speed;
-  var speedKmh = 0;
-  if (sp != null && sp >= 0) {
-    speedKmh = sp * 3.6;
-  } else if (lastPos && lastT) {
+  var sp = p.coords.speed, speedKmh = 0;
+  if (sp != null && sp >= 0) speedKmh = sp * 3.6;
+  else if (lastPos && lastT) {
     var dt = (Date.now() - lastT) / 1000;
-    if (dt > 0) speedKmh = (dist(lastPos, myPos) / dt) * 3.6;
+    if (dt > 0) speedKmh = dist(lastPos, myPos) / dt * 3.6;
   }
   document.getElementById('speed').textContent = speedKmh.toFixed(1);
   lastPos = myPos; lastT = Date.now();
 
-  // المسار 🛤️
   if (tracking) {
     trackPoints.push([myPos.lat, myPos.lng]);
     if (trackLine) map.removeLayer(trackLine);
-    trackLine = L.polyline(trackPoints, { color: '#00e5ff', weight: 3 }).addTo(map);
+    trackLine = L.polyline(trackPoints, { color:'#00e5ff', weight:3 }).addTo(map);
     var td = 0;
-    for (var i = 1; i < trackPoints.length; i++) {
+    for (var i = 1; i < trackPoints.length; i++)
       td += dist({lat:trackPoints[i-1][0],lng:trackPoints[i-1][1]}, {lat:trackPoints[i][0],lng:trackPoints[i][1]});
-    }
     document.getElementById('trackDist').textContent = (td/1000).toFixed(2);
   }
 
-  // المسافة والوقت للوجهة
   if (currentDest) {
-    if (line) line.setLatLngs([[myPos.lat, myPos.lng], [currentDest.lat, currentDest.lng]]);
+    if (line) line.setLatLngs([[myPos.lat, myPos.lng],[currentDest.lat, currentDest.lng]]);
     var d = dist(myPos, currentDest);
     document.getElementById('dist').textContent = d < 1000 ? Math.round(d) : (d/1000).toFixed(2)+'ك';
     if (speedKmh > 0.2) {
       var mins = Math.round(d/1000/speedKmh*60);
       document.getElementById('time').textContent = mins < 60 ? mins+' د' : Math.floor(mins/60)+'س '+(mins%60)+'د';
-    } else {
-      document.getElementById('time').textContent = '--:--';
-    }
-    // تحديث البوصلة
+    } else document.getElementById('time').textContent = '--:--';
     updateCompass(bearing(myPos, currentDest));
   }
-  map.panTo([myPos.lat, myPos.lng], { animate: true });
+  map.panTo([myPos.lat, myPos.lng]);
+
+  if (!weatherOnce) { weatherOnce = true; fetchWeather(); setInterval(fetchWeather, 1200000); }
 }
 function onErr(e) {
   document.getElementById('topbar').innerHTML = '⚠️ مشكلة GPS: ' + e.message;
 }
-navigator.geolocation.watchPosition(onPos, onErr, {
-  enableHighAccuracy: true, maximumAge: 1000, timeout: 10000
-});
+navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy:true, maximumAge:1000, timeout:10000 });
 
 // ===== المسار 🛤️ =====
 var tracking = false, trackPoints = [], trackLine = null;
@@ -296,13 +325,11 @@ document.getElementById('trackBtn').onclick = function() {
   tracking = !tracking;
   if (tracking) {
     trackPoints = [[myPos.lat, myPos.lng]];
-    this.textContent = '⏸️ إيقاف';
-    this.style.background = '#d81b60';
+    this.textContent = '⏸️ إيقاف'; this.style.background = '#d81b60';
     showMsg('🛤️ بدأ تسجيل المسار');
   } else {
-    this.textContent = '🛤️ مسار';
-    this.style.background = '#8e24aa';
-    showMsg('⏸️ تم إيقاف التسجيل — المسافة: ' + document.getElementById('trackDist').textContent + ' كم');
+    this.textContent = '🛤️ مسار'; this.style.background = '#8e24aa';
+    showMsg('⏸️ المسافة المقطوعة: ' + document.getElementById('trackDist').textContent + ' كم');
   }
 };
 
@@ -311,24 +338,24 @@ var compassOn = false, headDeg = 0;
 function updateCompass(brg) {
   if (!compassOn) return;
   document.getElementById('compassDeg').textContent = Math.round(brg) + '°';
-  // سهم يدور حسب الفرق بين اتجاه الهاتف واتجاه الوجهة
-  var diff = brg - headDeg;
-  document.getElementById('compassArrow').style.transform = 'rotate(' + diff + 'deg)';
+  document.getElementById('compassArrow').style.transform = 'rotate(' + (brg - headDeg) + 'deg)';
 }
 document.getElementById('compassBtn').onclick = function() {
   compassOn = !compassOn;
   document.getElementById('compass').style.display = compassOn ? 'block' : 'none';
-  if (compassOn && currentDest) {
-    showMsg('🧭 البوصلة مفعّلة — وجّه الهاتف نحو الوجهة');
+  if (!compassOn) return;
+  showMsg('🧭 وجّه الهاتف نحو الوجهة');
+  function onOrient(e) {
+    if (e.webkitCompassHeading != null) headDeg = e.webkitCompassHeading;
+    else if (e.alpha != null) headDeg = 360 - e.alpha;
   }
-  // استشعار اتجاه الهاتف
-  if (compassOn && 'ondeviceorientationabsolute' in window || 'ondeviceorientation' in window) {
-    window.addEventListener('deviceorientationabsolute', function(e) {
-      if (e.alpha != null) { headDeg = 360 - e.alpha; }
-    }, true);
-    window.addEventListener('deviceorientation', function(e) {
-      if (e.webkitCompassHeading != null) { headDeg = e.webkitCompassHeading; }
-    }, true);
+  if (window.DeviceOrientationEvent && DeviceOrientationEvent.requestPermission) {
+    DeviceOrientationEvent.requestPermission().then(function(res) {
+      if (res === 'granted') window.addEventListener('deviceorientation', onOrient, true);
+    });
+  } else {
+    window.addEventListener('deviceorientationabsolute', onOrient, true);
+    window.addEventListener('deviceorientation', onOrient, true);
   }
 };
 
@@ -340,41 +367,30 @@ function applyNight() {
 }
 document.getElementById('nightBtn').onclick = function() {
   nightMode = !nightMode;
-  localStorage.setItem('nightMode', nightMode ? '1' : '0');
+  localStorage.setItem('nightMode', nightMode
+
+', nightMode ? '1' : '0');
   applyNight();
 };
 applyNight();
 
-// ===== حالة البحر 🌊 (Open-Meteo) =====
+// ===== الطقس البحري 🌊 =====
 function fetchWeather() {
   var url = 'https://api.open-meteo.com/v1/forecast?latitude=' + myPos.lat +
-            '&longitude=' + myPos.lng +
-            '&current=wind_speed_10m,wind_direction_10m,temperature_2m,precipitation' +
-            '&marine=1&timezone=auto';
+    '&longitude=' + myPos.lng +
+    '&current=wind_speed_10m,wind_direction_10m,temperature_2m&timezone=auto';
   fetch(url).then(function(r){ return r.json(); }).then(function(w) {
-    var c = w.current;
-    if (!c) return;
+    var c = w.current; if (!c) return;
     var dir = ['شمال','شمال شرق','شرق','جنوب شرق','جنوب','جنوب غرب','غرب','شمال غرب'][Math.round(c.wind_direction_10m/45)%8];
     var box = document.getElementById('weatherBox');
-    box.innerHTML = '🌊 <b>حالة البحر</b><br>' +
-      '💨 رياح: ' + Math.round(c.wind_speed_10m) + ' كم/س (' + dir + ')<br>' +
-      '🌡️ ' + Math.round(c.temperature_2m) + '°C';
+    box.innerHTML = '🌊 <b>حالة البحر</b><br>💨 رياح: ' + Math.round(c.wind_speed_10m) +
+      ' كم/س (' + dir + ')<br>🌡️ ' + Math.round(c.temperature_2m) + '°C';
     box.style.display = 'block';
-  }).catch(function(){ /* Marine غير متاح في بعض المناطق — تجاهل */ });
+  }).catch(function(){});
 }
-// تحديث الطقس بعد أول موقع + كل 20 دقيقة
-var weatherOnce = false;
-var oldOnPos = onPos;
-onPos = function(p) {
-  oldOnPos(p);
-  if (!weatherOnce) { weatherOnce = true; fetchWeather(); setInterval(fetchWeather, 1200000); }
-};
-navigator.geolocation.watchPosition(onPos, onErr, {
-  enableHighAccuracy: true, maximumAge: 1000, timeout: 10000
-});
 
 saveSpots(); drawSpots();
-
 </script>
 </body>
 </html>
+
