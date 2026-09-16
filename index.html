@@ -4,110 +4,71 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<meta name="theme-color" content="#0f0f1a">
-<meta name="apple-mobile-web-app-capable" content="yes">
 <title>Redline Fishing</title>
-<link rel="icon" href="https://i.imgur.com/sE2H0uM.png">
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <style>
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{font-family:Arial,sans-serif;background:#0f0f1a;color:#eee;height:100vh;display:flex;flex-direction:column;overflow:hidden}
-#splash{position:fixed;inset:0;background:#0f0f1a;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .6s}
-#splash img{width:150px;animation:p 2s infinite}
-#splash h1{margin-top:16px;color:#e63946}
-@keyframes p{50%{transform:scale(1.07)}}
-header{display:flex;align-items:center;gap:10px;padding:8px 14px;background:#1a1a2e;border-bottom:2px solid #e63946}
-header img{width:38px;height:38px;border-radius:8px}
-#hInfo{flex:1;min-width:0}#hInfo h1{font-size:16px}#hInfo h1 span,#gpsLine b{color:#e63946}
-#gpsLine{font-size:12px;color:#aaa;white-space:nowrap;overflow:hidden}
-#dot{width:11px;height:11px;border-radius:50%;background:#555}
-#dot.on{background:#2ecc71;box-shadow:0 0 8px #2ecc71}
-#tb,.row{display:flex;gap:6px;padding:8px;background:#16162a;z-index:1000;overflow-x:auto}
-.row{padding:0 8px 8px}
-.tb{flex-shrink:0;padding:10px 13px;border:0;border-radius:10px;color:#fff;font-size:14px;font-weight:bold;cursor:pointer}
-.red{background:#e63946}.purple{background:#7b2cbf}.navy{background:#1d3557}
-.teal{background:#0e7c6b}.green{background:#2a9d3f}.orange{background:#e07b00;flex:1}.brown{background:#5a3a2a;flex:1}
-.active{outline:3px solid #fff}
-#map{flex:1;background:#0f0f1a}
-#bb{display:flex;background:#1a1a2e;border-top:2px solid #e63946;padding:8px 4px}
-.st{flex:1;text-align:center;font-size:17px;font-weight:bold}.st small{display:block;font-size:10px;color:#888}
-.r{color:#e63946}
-#panel{position:fixed;inset:0;background:#0009;z-index:2000;display:none;align-items:flex-end}
-#panel.show{display:flex}
-#pc{background:#1a1a2e;width:100%;max-height:70vh;overflow:auto;border-radius:20px 20px 0 0;padding:20px 16px;border-top:3px solid #e63946}
-#pc h2{color:#e63946;font-size:17px;margin-bottom:14px}
-.spot{display:flex;align-items:center;gap:12px;padding:12px;background:#222240;border-radius:10px;margin-bottom:8px}
-.info{flex:1}.info b{display:block;font-size:14px}.info small{color:#888;font-size:11px}
-.go,.del{cursor:pointer}.go{color:#e63946;font-weight:bold}.del{color:#f77}
-.empty{text-align:center;color:#777;padding:24px}
-.cb{width:100%;padding:12px;background:#e63946;color:#fff;border:0;border-radius:10px;font-size:15px;margin-top:10px}
-#toast{position:fixed;bottom:70px;left:50%;transform:translate(-50%,80px);background:#e63946;color:#fff;padding:12px 24px;border-radius:24px;transition:.3s;z-index:3000;white-space:nowrap}
-#toast.show{transform:translate(-50%,0)}
+*{box-sizing:border-box;margin:0}
+body{font-family:Arial;background:#0f0f1a;color:#fff;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{padding:10px;background:#1a1a2e;border-bottom:2px solid #e63946;text-align:center}
+header span{color:#e63946}
+#gps{font-size:12px;color:#aaa;margin-top:5px}
+#buttons{display:flex;gap:6px;padding:8px;background:#16162a;overflow:auto}
+button{border:0;border-radius:8px;padding:11px;color:#fff;font-weight:bold;white-space:nowrap}
+.green{background:#2a9d3f}.red{background:#e63946}.blue{background:#1d3557}
+.orange{background:#e07b00}.purple{background:#7b2cbf}
+#map{flex:1}
+#info{display:flex;justify-content:space-around;background:#1a1a2e;border-top:2px solid #e63946;padding:10px}
+small{display:block;color:#aaa;font-size:10px;text-align:center}
+.boat-marker{background:transparent;border:0}
+.boat-icon{display:block;width:40px;height:40px;font-size:32px;line-height:40px;text-align:center;transform-origin:center;filter:drop-shadow(0 2px 2px #000);transition:transform .3s linear}
+#toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#e63946;padding:12px 20px;border-radius:20px;display:none;z-index:5}
 </style>
 </head>
+
 <body>
-
-<div id="splash">
-<img src="https://i.imgur.com/sE2H0uM.png">
-<h1>Redline Fishing</h1>
-<p style="color:#888;margin-top:6px">GPS لصيادي الكاياك 🛶🎣</p>
-</div>
-
 <header>
-<img src="https://i.imgur.com/sE2H0uM.png">
-<div id="hInfo"><h1>Redline <span>Fishing</span></h1><div id="gpsLine">🧭 -- | <b>--</b> 📍</div></div>
-<div id="dot"></div>
+<h2>Redline <span>Fishing</span></h2>
+<div id="gps">🧭 -- | 📍 في انتظار GPS</div>
 </header>
 
-<div id="tb">
-<button class="tb green" onclick="centerMe()">🎯 هدفي</button>
-<button class="tb teal" onclick="toggleDepth()">📊 أعماق</button>
-<button class="tb navy" onclick="toggleSea()">🌊 بحر</button>
-<button class="tb purple" id="trkBtn" onclick="toggleTrack()">🗺️ مسار</button>
-<button class="tb red" onclick="openSpots()">📋 نقاطي</button>
-</div>
-
-<div class="row">
-<button class="tb orange" onclick="saveSpot()">💾 حفظ</button>
-<button class="tb brown" onclick="exportGPX()">📤 GPX</button>
+<div id="buttons">
+<button class="green" onclick="centerMe()">🎯 موقعي</button>
+<button class="purple" onclick="toggleTrack()">🗺️ مسار</button>
+<button class="red" onclick="saveSpot()">💾 حفظ النقطة</button>
+<button class="blue" onclick="toggleSea()">🌊 البحر</button>
+<button class="orange" onclick="toggleDepth()">📊 الأعماق</button>
 </div>
 
 <div id="map"></div>
 
-<div id="bb">
-<div class="st"><span id="sSpd" class="r">0.0</span><small>سرعة km/h</small></div>
-<div class="st"><span id="sTim">00:00</span><small>المدة</small></div>
-<div class="st"><span id="sDst" class="r">0.00</span><small>المسافة كم</small></div>
-<div class="st"><span id="sMax">0.0</span><small>أقصى</small></div>
-</div>
-
-<div id="panel" onclick="if(event.target===this)closePanel()">
-<div id="pc">
-<h2>🎯 نقاط الصيد المحفوظة</h2>
-<div id="sList"></div>
-<button class="cb" onclick="closePanel()">إغلاق</button>
-</div>
+<div id="info">
+<div><b id="speed">0.0</b><small>سرعة km/h</small></div>
+<div><b id="distance">0.00</b><small>المسافة كم</small></div>
+<div><b id="max">0.0</b><small>أقصى سرعة</small></div>
 </div>
 
 <div id="toast"></div>
 
 <script>
-let map,marker,accC,trackLine,depthLayer,seaLayer,selectedMarker,pos=null;
-let tracking=false,trackPts=[],totalDist=0,maxSpd=0,startTime=null,lastPos=null;
-const $=id=>document.getElementById(id);
+let map=L.map('map').setView([36.7786,10.2279],14),
+ marker,accuracyCircle,position,
+ track=[],line,tracking=false,distance=0,maxSpeed=0,last,
+ sea,depth;
 
-map=L.map('map').setView([36.7786,10.2279],14);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
  maxZoom:19,attribution:'© OpenStreetMap'
 }).addTo(map);
 
-const myIcon=L.icon({
- iconUrl:'https://i.imgur.com/sE2H0uM.png',
- iconSize:[34,34],iconAnchor:[17,17]
+const boatIcon=L.divIcon({
+ className:'boat-marker',
+ html:'<span class="boat-icon">🚤</span>',
+ iconSize:[40,40],
+ iconAnchor:[20,20]
 });
 
-function hav(a,b,c,d){
+function distanceKm(a,b,c,d){
  const R=6371,x=(c-a)*Math.PI/180,y=(d-b)*Math.PI/180;
  const q=Math.sin(x/2)**2+
  Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(y/2)**2;
@@ -115,169 +76,120 @@ function hav(a,b,c,d){
 }
 
 function startGPS(){
- if(!navigator.geolocation){
-  toast('⚠️ المتصفح لا يدعم GPS');return;
- }
+ if(!navigator.geolocation)return show('المتصفح لا يدعم GPS');
+
  navigator.geolocation.watchPosition(p=>{
-  $('dot').classList.add('on');pos=p;
-  const {latitude:la,longitude:ln,accuracy:ac,speed,heading}=p.coords;
-  const hd=heading!=null&&!isNaN(heading)?Math.round(heading)+'°':'--';
-  $('gpsLine').innerHTML='🧭 '+hd+' | <b>'+la.toFixed(5)+','+ln.toFixed(5)+'</b> 📍';
+  position=p;
+  const {latitude:lat,longitude:lng,accuracy,speed,heading}=p.coords;
+  const direction=heading!=null&&!isNaN(heading)?Math.round(heading)+'°':'--';
+
+  document.getElementById('gps').innerHTML=
+   `🧭 ${direction} | 📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 
   if(!marker){
-   marker=L.marker([la,ln],{icon:myIcon}).addTo(map);
-   accC=L.circle([la,ln],{radius:ac,color:'#e63946',fillOpacity:.08}).addTo(map);
-   map.setView([la,ln],15);
+   marker=L.marker([lat,lng],{icon:boatIcon}).addTo(map);
+   accuracyCircle=L.circle([lat,lng],{
+    radius:accuracy,color:'#e63946',fillOpacity:.08
+   }).addTo(map);
+   map.setView([lat,lng],15);
   }else{
-   marker.setLatLng([la,ln]);
-   accC.setLatLng([la,ln]).setRadius(ac);
+   marker.setLatLng([lat,lng]);
+   accuracyCircle.setLatLng([lat,lng]).setRadius(accuracy);
   }
 
-  const kmh=speed!=null&&!isNaN(speed)?Math.max(0,speed*3.6):0;
-  $('sSpd').textContent=kmh.toFixed(1);
+  if(heading!=null&&!isNaN(heading)){
+   const boat=marker.getElement()?.querySelector('.boat-icon');
+   if(boat)boat.style.transform=`rotate(${heading}deg)`;
+  }
+
+  const kmh=speed&&!isNaN(speed)?Math.max(0,speed*3.6):0;
+  document.getElementById('speed').textContent=kmh.toFixed(1);
 
   if(tracking){
-   maxSpd=Math.max(maxSpd,kmh);
-   $('sMax').textContent=maxSpd.toFixed(1);
-   trackPts.push([la,ln]);
+   maxSpeed=Math.max(maxSpeed,kmh);
+   document.getElementById('max').textContent=maxSpeed.toFixed(1);
+   track.push([lat,lng]);
 
-   if(!trackLine)
-    trackLine=L.polyline(trackPts,{color:'#e63946',weight:4}).addTo(map);
-   else trackLine.setLatLngs(trackPts);
+   if(last)distance+=distanceKm(last[0],last[1],lat,lng);
+   document.getElementById('distance').textContent=distance.toFixed(2);
 
-   if(lastPos)totalDist+=hav(lastPos[0],lastPos[1],la,ln);
-   $('sDst').textContent=totalDist.toFixed(2);
-
-   const sec=Math.floor((Date.now()-startTime)/1000);
-   $('sTim').textContent=String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0');
+   if(!line)line=L.polyline(track,{color:'#e63946',weight:4}).addTo(map);
+   else line.setLatLngs(track);
   }
-  lastPos=[la,ln];
 
+  last=[lat,lng];
  },()=>{
-  $('dot').classList.remove('on');
-  toast('⚠️ فعّل GPS واسمح بالوصول إلى الموقع');
+  show('⚠️ فعّل GPS واسمح بالوصول إلى الموقع');
  },{
-  enableHighAccuracy:true,maximumAge:2000,timeout:10000
+  enableHighAccuracy:true,
+  maximumAge:2000,
+  timeout:10000
  });
+}
+
+function centerMe(){
+ if(position)map.setView([
+  position.coords.latitude,
+  position.coords.longitude
+ ],16);
+ else show('⚠️ في انتظار GPS');
 }
 
 function toggleTrack(){
  tracking=!tracking;
- const b=$('trkBtn');
-
  if(tracking){
-  trackPts=[];totalDist=0;maxSpd=0;startTime=Date.now();lastPos=null;
-  if(trackLine){map.removeLayer(trackLine);trackLine=null}
-  $('sDst').textContent='0.00';$('sMax').textContent='0.0';
-  b.classList.add('active');toast('🔴 بدأ تسجيل المسار');
- }else{
-  b.classList.remove('active');toast('📊 الرحلة: '+totalDist.toFixed(2)+' كم');
- }
+  track=[];distance=0;maxSpeed=0;last=null;
+  if(line){map.removeLayer(line);line=null}
+  document.getElementById('distance').textContent='0.00';
+  document.getElementById('max').textContent='0.0';
+  show('🔴 بدأ تسجيل المسار');
+ }else show('✅ تم إيقاف المسار');
 }
 
 function saveSpot(){
- if(!pos){toast('⚠️ في انتظار GPS...');return}
- const sp=JSON.parse(localStorage.getItem('redline_spots')||'[]');
- sp.push({
-  name:'نقطة '+new Date().toLocaleTimeString('ar',{hour:'2-digit',minute:'2-digit'}),
-  lat:pos.coords.latitude,lng:pos.coords.longitude,
-  date:new Date().toLocaleDateString('ar')
+ if(!position)return show('⚠️ في انتظار GPS');
+ const spots=JSON.parse(localStorage.getItem('spots')||'[]');
+ spots.push({
+  lat:position.coords.latitude,
+  lng:position.coords.longitude,
+  date:new Date().toLocaleString('ar')
  });
- localStorage.setItem('redline_spots',JSON.stringify(sp));
- toast('✅ تم حفظ النقطة');
-}
-
-function openSpots(){renderSpots();$('panel').classList.add('show')}
-function closePanel(){$('panel').classList.remove('show')}
-
-function renderSpots(){
- const sp=JSON.parse(localStorage.getItem('redline_spots')||'[]');
- if(!sp.length){
-  $('sList').innerHTML='<div class="empty">لا توجد نقاط محفوظة بعد</div>';return;
- }
- $('sList').innerHTML=sp.map((s,i)=>{
-  const d=pos?hav(pos.coords.latitude,pos.coords.longitude,s.lat,s.lng).toFixed(2)+' كم':'--';
-  return `<div class="spot">
-  <div class="info"><b>🎣 ${s.name}</b><small>${s.lat.toFixed(4)}, ${s.lng.toFixed(4)} • ${d}</small></div>
-  <div class="go" onclick="goTo(${s.lat},${s.lng})">اذهب ↗</div>
-  <div class="del" onclick="delSpot(${i})">🗑️</div>
-  </div>`;
- }).join('');
-}
-
-function delSpot(i){
- const sp=JSON.parse(localStorage.getItem('redline_spots')||'[]');
- sp.splice(i,1);
- localStorage.setItem('redline_spots',JSON.stringify(sp));
- renderSpots();toast('🗑️ تم الحذف');
-}
-
-function goTo(la,ln){
- closePanel();map.setView([la,ln],16);
- if(selectedMarker)map.removeLayer(selectedMarker);
- selectedMarker=L.marker([la,ln]).addTo(map);
- toast('🧭 عرض النقطة');
-}
-
-function centerMe(){
- if(pos)map.setView([pos.coords.latitude,pos.coords.longitude],16);
- else toast('⚠️ في انتظار GPS...');
-}
-
-function toggleDepth(){
- if(depthLayer){
-  map.removeLayer(depthLayer);depthLayer=null;toast('📉 إخفاء الأعماق');return;
- }
- depthLayer=L.tileLayer(
- 'https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Bathymetry/MapServer/tile/{z}/{y}/{x}',
- {maxZoom:15,opacity:.7}
- ).addTo(map);
- toast('📊 عرض الأعماق');
+ localStorage.setItem('spots',JSON.stringify(spots));
+ show('✅ تم حفظ النقطة');
 }
 
 function toggleSea(){
- if(seaLayer){
-  map.removeLayer(seaLayer);seaLayer=null;toast('🌊 إخفاء علامات البحر');return;
+ if(sea){
+  map.removeLayer(sea);sea=null;show('🌊 تم إخفاء علامات البحر');
+ }else{
+  sea=L.tileLayer(
+   'https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',
+   {maxZoom:18}
+  ).addTo(map);
+  show('🌊 تم عرض علامات البحر');
  }
- seaLayer=L.tileLayer(
- 'https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',
- {maxZoom:18}
- ).addTo(map);
- toast('🌊 علامات البحر');
 }
 
-function exportGPX(){
- if(!trackPts.length){toast('⚠️ ابدأ تسجيل المسار أولاً');return}
- let g='<?xml version="1.0" encoding="UTF-8"?>\\n';
- g+='<gpx version="1.1" creator="Redline Fishing">\\n<trk><trkseg>\\n';
- trackPts.forEach(p=>g+=`<trkpt lat="${p[0]}" lon="${p[1]}"></trkpt>\\n`);
- g+='</trkseg></trk></gpx>';
-
- const blob=new Blob([g],{type:'application/gpx+xml'});
- const a=document.createElement('a');
- a.href=URL.createObjectURL(blob);
- a.download='redline-track.gpx';
- a.click();
- URL.revokeObjectURL(a.href);
- toast('📤 تم تصدير المسار');
+function toggleDepth(){
+ if(depth){
+  map.removeLayer(depth);depth=null;show('📉 تم إخفاء الأعماق');
+ }else{
+  depth=L.tileLayer(
+   'https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Bathymetry/MapServer/tile/{z}/{y}/{x}',
+   {maxZoom:15,opacity:.7}
+  ).addTo(map);
+  show('📊 تم عرض الأعماق');
+ }
 }
 
-function toast(m){
- const t=$('toast');
- t.textContent=m;t.classList.add('show');
- setTimeout(()=>t.classList.remove('show'),2500);
+function show(message){
+ const t=document.getElementById('toast');
+ t.textContent=message;
+ t.style.display='block';
+ setTimeout(()=>t.style.display='none',2500);
 }
 
-window.addEventListener('load',()=>{
- setTimeout(()=>{
-  const splash=$('splash');
-  if(splash){
-   splash.style.opacity='0';
-   setTimeout(()=>splash.remove(),700);
-  }
-  startGPS();
- },2200);
-});
+startGPS();
 </script>
 </body>
 </html>
