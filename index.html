@@ -130,8 +130,9 @@ function delSpot(i){const sp=JSON.parse(localStorage.getItem('redline_spots')||'
 sp.splice(i,1);localStorage.setItem('redline_spots',JSON.stringify(sp));renderSpots();toast('🗑️ حُذفت');}
 function goTo(la,ln){closePanel();map.setView([la,ln],16);L.marker([la,ln]).addTo(map);toast('🧭 عرض النقطة');}
 function centerMe(){if(pos){map.setView([pos.coords.latitude,pos.coords.longitude],16);}else toast('⚠️ في انتظار GPS...');}
- function toggleDepth(){if(depthLayer){map.removeLayer(depthLayer);depthLayer=null;toast('📉 إخفاء الأعماق');return;}
-depthLayer=L.tileLayer('https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Bathymetry/MapServer/tile/{z}/{y}/{x}',{maxZoom:15,opacity:.7}).addTo(map);toast('📊 عرض الأعماق');}function toggleSea(){if(seaLayer){map.removeLayer(seaLayer);seaLayer=null;toast('🌊 إخفاء البحر');return;}
+function toggleDepth(){if(depthLayer){map.removeLayer(depthLayer);depthLayer=null;toast('📉 إخفاء الأعماق');return;}
+depthLayer=L.tileLayer('https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Bathymetry/MapServer/tile/{z}/{y}/{x}',{maxZoom:15,opacity:.7}).addTo(map);toast('📊 عرض الأعماق');}
+function toggleSea(){if(seaLayer){map.removeLayer(seaLayer);seaLayer=null;toast('🌊 إخفاء البحر');return;}
 seaLayer=L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);toast('🌊 علامات البحر');}
 function exportGPX(){if(!trackPts.length){toast('⚠️ ابدأ التتبع أولاً');return;}
 let g='<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Redline Fishing">\n<trk><trkseg>\n';
