@@ -1,1 +1,124 @@
 
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Marine Nav - RedLine Fishing</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  body { margin:0; font-family:sans-serif; background:#1a1a2e; }
+  #map { width:100%; height:70vh; }
+  #infobar { background:#263238; color:#fff; padding:10px;
+    display:flex; justify-content:space-around; text-align:center; }
+  #infobar b { font-size:16px; }
+  #infobar span.lbl { font-size:11px; color:#aaa; }
+  #status { background:#0d47a1; color:#fff; padding:6px;
+    text-align:center; font-size:13px; }
+</style>
+</head>
+<body>
+
+<div id="status">⏳ جاري تحديد الموقع...</div>
+<div id="map"></div>
+
+<div id="infobar">
+  <div><span class="lbl">⚡ السرعة</span><br><b id="speed">0.0</b> كم/س</div>
+  <div><span class="lbl">📏 المسافة</span><br><b id="distance">--</b></div>
+  <div><span class="lbl">⏱️ الوقت</span><br><b id="time">--:--</b></div>
+  <div><span class="lbl">🎯 الوجهة</span><br><b id="bearing">--</b></div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+  var map = L.map('map').setView([36.8700, 10.3480], 14);
+
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: 'Esri', maxZoom: 18
+  }).addTo(map);
+
+  L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {
+    maxZoom: 18
+  }).addTo(map);
+
+  var userMarker = null, destMarker = null, routeLine = null;
+  var destination = null, userPos = null, lastSpeed = 0;
+
+  function haversine(lat1, lon1, lat2, lon2) {
+    var R = 6371000, rad = function(d){ return d * Math.PI / 180; };
+    var dLat = rad(lat2-lat1), dLon = rad(lon2-lon1);
+    var a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+            Math.cos(rad(lat1))*Math.cos(rad(lat2))*Math.sin(dLon/2)*Math.sin(dLon/2);
+    return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  function bearingTo(lat1, lon1, lat2, lon2) {
+    var rad = function(d){ return d * Math.PI / 180; };
+    var dLon = rad(lon2-lon1);
+    var y = Math.sin(dLon) * Math.cos(rad(lat2));
+    var x = Math.cos(rad(lat1))*Math.sin(rad(lat2)) -
+            Math.sin(rad(lat1))*Math.cos(rad(lat2))*Math.cos(dLon);
+    return (Math.atan2(y,x)*180/Math.PI + 360) % 360;
+  }
+
+  function updateRoute() {
+    if (!userPos || !destination) return;
+
+    var pts = [userPos, destination];
+    if (routeLine) routeLine.setLatLngs(pts);
+    else routeLine = L.polyline(pts, {color:'#00e5ff', weight:4}).addTo(map);
+
+    var d = haversine(userPos.lat, userPos.lng, destination.lat, destination.lng);
+    document.getElementById('distance').textContent =
+      d >= 1000 ? (d/1000).toFixed(2)+' كم' : d.toFixed(0)+' م';
+
+    document.getElementById('bearing').textContent =
+      bearingTo(userPos.lat, userPos.lng, destination.lat, destination.lng).toFixed(0) + '°';
+
+    if (lastSpeed > 0.5) {
+      var mins = Math.round(d/lastSpeed/60);
+      document.getElementById('time').textContent =
+        mins >= 60 ? Math.floor(mins/60)+'س '+(mins%60)+'د' : mins+' د';
+    } else {
+      document.getElementById('time').textContent = '--:--';
+    }
+  }
+
+  map.on('click', function(e){
+    destination = e.latlng;
+    if (destMarker) destMarker.setLatLng(e.latlng);
+    else destMarker = L.marker(e.latlng, {
+      icon: L.divIcon({ html:'<div style="font-size:30px;">🎯</div>',
+        iconSize:[30,30], iconAnchor:[15,15], className:'' })
+    }).addTo(map);
+    updateRoute();
+  });
+
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(function(pos){
+      userPos = L.latLng(pos.coords.latitude, pos.coords.longitude);
+      lastSpeed = pos.coords.speed || 0;
+
+      var icon = L.divIcon({
+        html: '<div style="font-size:32px;filter:drop-shadow(0 0 5px red);">📍</div>',
+        iconSize: [32,32], iconAnchor: [16,16], className: ''
+      });
+
+      if (userMarker) userMarker.setLatLng(userPos);
+      else userMarker = L.marker(userPos, {icon: icon}).addTo(map);
+
+      document.getElementById('speed').textContent = (lastSpeed*3.6).toFixed(1);
+      document.getElementById('status').textContent =
+        '✅ GPS متصل — اضغط على البحر لتحديد الوجهة 🎯';
+      updateRoute();
+      map.setView(userPos, Math.max(map.getZoom(), 14));
+    }, function(err){
+      document.getElementById('status').textContent =
+        '❌ تعذر الوصول للموقع — اسمح بالوصول للموقع في إعدادات المتصفح';
+    }, { enableHighAccuracy: true, maximumAge: 5000 });
+  }
+})();
+</script>
+</body>
+</html>
