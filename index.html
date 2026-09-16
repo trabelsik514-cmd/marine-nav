@@ -2,194 +2,886 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
-<title>Redline Fishing</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Redline Fishing</title>
 
-<style>
-*{box-sizing:border-box;margin:0}
-body{font-family:Arial;background:#0f0f1a;color:#fff;height:100vh;display:flex;flex-direction:column;overflow:hidden}
-header{padding:10px;background:#1a1a2e;border-bottom:2px solid #e63946;text-align:center}
-header span{color:#e63946}
-#gps{font-size:12px;color:#aaa;margin-top:5px}
-#buttons{display:flex;gap:6px;padding:8px;background:#16162a;overflow:auto}
-button{border:0;border-radius:8px;padding:11px;color:#fff;font-weight:bold;white-space:nowrap}
-.green{background:#2a9d3f}.red{background:#e63946}.blue{background:#1d3557}
-.orange{background:#e07b00}.purple{background:#7b2cbf}
-#map{flex:1}
-#info{display:flex;justify-content:space-around;background:#1a1a2e;border-top:2px solid #e63946;padding:10px}
-small{display:block;color:#aaa;font-size:10px;text-align:center}
-.boat-marker{background:transparent;border:0}
-.boat-icon{display:block;width:40px;height:40px;font-size:32px;line-height:40px;text-align:center;transform-origin:center;filter:drop-shadow(0 2px 2px #000);transition:transform .3s linear}
-#toast{position:fixed;bottom:70px;left:50%;transform:translateX(-50%);background:#e63946;padding:12px 20px;border-radius:20px;display:none;z-index:5}
-</style>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  />
+
+  <style>
+    :root {
+      --bg: #07111f;
+      --panel: rgba(11, 28, 48, .94);
+      --panel-light: #102b46;
+      --blue: #1688bd;
+      --cyan: #19c3b1;
+      --red: #ef4056;
+      --orange: #f59e0b;
+      --text: #f4f8fb;
+      --muted: #9bb0c4;
+      --border: rgba(255,255,255,.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Tahoma, sans-serif;
+      overflow: hidden;
+    }
+
+    #app {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* الرأس */
+    header {
+      height: 64px;
+      padding: 10px 14px;
+      background: linear-gradient(135deg, #0c2742, #07111f);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      z-index: 1000;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .brand-icon {
+      width: 39px;
+      height: 39px;
+      border-radius: 13px;
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      display: grid;
+      place-items: center;
+      font-size: 23px;
+      box-shadow: 0 5px 16px rgba(25,195,177,.25);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 17px;
+      letter-spacing: .3px;
+    }
+
+    .brand small {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      margin-top: 3px;
+    }
+
+    .gps-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .gps-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #777;
+    }
+
+    .gps-dot.active {
+      background: #22c55e;
+      box-shadow: 0 0 10px #22c55e;
+    }
+
+    .gps-dot.error {
+      background: var(--red);
+    }
+
+    /* الخريطة */
+    .map-area {
+      position: relative;
+      flex: 1;
+      min-height: 0;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+      background: #102334;
+    }
+
+    /* بطاقة المعلومات */
+    .dashboard {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      left: 14px;
+      z-index: 500;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 7px;
+      pointer-events: none;
+    }
+
+    .stat {
+      min-width: 0;
+      padding: 9px 5px;
+      text-align: center;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      box-shadow: 0 5px 20px rgba(0,0,0,.25);
+      backdrop-filter: blur(12px);
+    }
+
+    .stat-value {
+      display: block;
+      color: var(--text);
+      font-size: 15px;
+      font-weight: bold;
+      direction: ltr;
+    }
+
+    .stat-label {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    /* الأزرار العائمة */
+    .map-actions {
+      position: absolute;
+      left: 14px;
+      bottom: 18px;
+      z-index: 500;
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .round-btn {
+      width: 46px;
+      height: 46px;
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      background: var(--panel);
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      box-shadow: 0 5px 15px rgba(0,0,0,.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .round-btn:active,
+    .main-btn:active,
+    .bottom-item:active {
+      transform: scale(.94);
+    }
+
+    /* لوحة التحكم السفلية */
+    .control-panel {
+      position: relative;
+      z-index: 900;
+      padding: 11px 13px 9px;
+      background: var(--panel);
+      border-top: 1px solid var(--border);
+      box-shadow: 0 -6px 20px rgba(0,0,0,.25);
+    }
+
+    .main-btn {
+      width: 100%;
+      height: 47px;
+      border: 0;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      color: white;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: .2s;
+    }
+
+    .main-btn.tracking {
+      background: linear-gradient(135deg, #f43f5e, #b91c1c);
+    }
+
+    .secondary-actions {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 9px;
+    }
+
+    .secondary-actions button {
+      min-height: 38px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel-light);
+      color: var(--text);
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .secondary-actions button:hover {
+      background: #1a405f;
+    }
+
+    .bottom-nav {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 4px;
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid var(--border);
+    }
+
+    .bottom-item {
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 11px;
+      cursor: pointer;
+      transition: .2s;
+    }
+
+    .bottom-item span {
+      display: block;
+      font-size: 19px;
+      margin-bottom: 3px;
+    }
+
+    .bottom-item.active {
+      color: var(--cyan);
+    }
+
+    /* أيقونة القارب */
+    .boat-marker {
+      font-size: 32px;
+      line-height: 40px;
+      text-align: center;
+      transition: transform .3s linear;
+      filter: drop-shadow(0 3px 3px rgba(0,0,0,.5));
+    }
+
+    .spot-marker {
+      font-size: 27px;
+      text-align: center;
+    }
+
+    .leaflet-control-zoom {
+      border: 0 !important;
+      box-shadow: 0 4px 12px rgba(0,0,0,.3) !important;
+    }
+
+    .leaflet-control-zoom a {
+      background: var(--panel) !important;
+      color: white !important;
+      border: 0 !important;
+    }
+
+    /* نافذة النقاط */
+    .spots-panel {
+      display: none;
+      position: absolute;
+      inset: 0;
+      z-index: 1200;
+      padding: 20px;
+      background: rgba(7,17,31,.97);
+      overflow-y: auto;
+    }
+
+    .spots-panel.show {
+      display: block;
+    }
+
+    .spots-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .spots-header h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .close-btn {
+      border: 0;
+      background: var(--red);
+      color: white;
+      border-radius: 9px;
+      padding: 8px 13px;
+      cursor: pointer;
+    }
+
+    .spot-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 12px;
+      margin-bottom: 8px;
+      background: var(--panel-light);
+      border-radius: 12px;
+      font-size: 12px;
+    }
+
+    .spot-row button {
+      border: 0;
+      border-radius: 8px;
+      padding: 7px 10px;
+      background: var(--red);
+      color: white;
+      cursor: pointer;
+    }
+
+    @media (max-width: 430px) {
+      .dashboard {
+        top: 10px;
+        right: 9px;
+        left: 9px;
+        gap: 5px;
+      }
+
+      .stat {
+        padding: 8px 2px;
+      }
+
+      .stat-value {
+        font-size: 13px;
+      }
+
+      .stat-label {
+        font-size: 9px;
+      }
+
+      .brand h1 {
+        font-size: 15px;
+      }
+
+      .gps-status {
+        font-size: 10px;
+      }
+    }
+  </style>
 </head>
 
 <body>
-<header>
-<h2>Redline <span>Fishing</span></h2>
-<div id="gps">🧭 -- | 📍 في انتظار GPS</div>
-</header>
+  <div id="app">
 
-<div id="buttons">
-<button class="green" onclick="centerMe()">🎯 موقعي</button>
-<button class="purple" onclick="toggleTrack()">🗺️ مسار</button>
-<button class="red" onclick="saveSpot()">💾 حفظ النقطة</button>
-<button class="blue" onclick="toggleSea()">🌊 البحر</button>
-<button class="orange" onclick="toggleDepth()">📊 الأعماق</button>
-</div>
+    <header>
+      <div class="brand">
+        <div class="brand-icon">🚤</div>
+        <div>
+          <h1>Redline Fishing</h1>
+          <small>نظام الملاحة والصيد الذكي</small>
+        </div>
+      </div>
 
-<div id="map"></div>
+      <div class="gps-status">
+        <span id="gpsDot" class="gps-dot"></span>
+        <span id="gpsText">GPS غير متصل</span>
+      </div>
+    </header>
 
-<div id="info">
-<div><b id="speed">0.0</b><small>سرعة km/h</small></div>
-<div><b id="distance">0.00</b><small>المسافة كم</small></div>
-<div><b id="max">0.0</b><small>أقصى سرعة</small></div>
-</div>
+    <main class="map-area">
+      <div id="map"></div>
 
-<div id="toast"></div>
+      <div class="dashboard">
+        <div class="stat">
+          <span id="speedValue" class="stat-value">0.0 kn</span>
+          <span class="stat-label">السرعة</span>
+        </div>
 
-<script>
-let map=L.map('map').setView([36.7786,10.2279],14),
- marker,accuracyCircle,position,
- track=[],line,tracking=false,distance=0,maxSpeed=0,last,
- sea,depth;
+        <div class="stat">
+          <span id="distanceValue" class="stat-value">0.00 km</span>
+          <span class="stat-label">المسافة</span>
+        </div>
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
- maxZoom:19,attribution:'© OpenStreetMap'
-}).addTo(map);
+        <div class="stat">
+          <span id="durationValue" class="stat-value">00:00</span>
+          <span class="stat-label">المدة</span>
+        </div>
 
-const boatIcon=L.divIcon({
- className:'boat-marker',
- html:'<span class="boat-icon">🚤</span>',
- iconSize:[40,40],
- iconAnchor:[20,20]
-});
+        <div class="stat">
+          <span id="maxSpeedValue" class="stat-value">0.0 kn</span>
+          <span class="stat-label">أقصى سرعة</span>
+        </div>
+      </div>
 
-function distanceKm(a,b,c,d){
- const R=6371,x=(c-a)*Math.PI/180,y=(d-b)*Math.PI/180;
- const q=Math.sin(x/2)**2+
- Math.cos(a*Math.PI/180)*Math.cos(c*Math.PI/180)*Math.sin(y/2)**2;
- return R*2*Math.atan2(Math.sqrt(q),Math.sqrt(1-q));
-}
+      <div class="map-actions">
+        <button class="round-btn" onclick="locateMe()" title="موقعي">◎</button>
+        <button class="round-btn" onclick="toggleLayers()" title="الطبقات">▣</button>
+        <button class="round-btn" onclick="saveCurrentSpot()" title="حفظ الموقع">📍</button>
+      </div>
 
-function startGPS(){
- if(!navigator.geolocation)return show('المتصفح لا يدعم GPS');
+      <div id="spotsPanel" class="spots-panel">
+        <div class="spots-header">
+          <h2>📍 النقاط المحفوظة</h2>
+          <button class="close-btn" onclick="closeSpots()">إغلاق</button>
+        </div>
+        <div id="spotsList"></div>
+      </div>
+    </main>
 
- navigator.geolocation.watchPosition(p=>{
-  position=p;
-  const {latitude:lat,longitude:lng,accuracy,speed,heading}=p.coords;
-  const direction=heading!=null&&!isNaN(heading)?Math.round(heading)+'°':'--';
+    <section class="control-panel">
+      <button id="trackingBtn" class="main-btn" onclick="toggleTracking()">
+        ▶ بدء تسجيل الرحلة
+      </button>
 
-  document.getElementById('gps').innerHTML=
-   `🧭 ${direction} | 📍 ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+      <div class="secondary-actions">
+        <button onclick="saveCurrentSpot()">📍 حفظ نقطة</button>
+        <button onclick="showSpots()">🗺 نقاطي</button>
+        <button onclick="exportGPX()">⬇ تصدير GPX</button>
+      </div>
 
-  if(!marker){
-   marker=L.marker([lat,lng],{icon:boatIcon}).addTo(map);
-   accuracyCircle=L.circle([lat,lng],{
-    radius:accuracy,color:'#e63946',fillOpacity:.08
-   }).addTo(map);
-   map.setView([lat,lng],15);
-  }else{
-   marker.setLatLng([lat,lng]);
-   accuracyCircle.setLatLng([lat,lng]).setRadius(accuracy);
-  }
+      <nav class="bottom-nav">
+        <button class="bottom-item active" onclick="locateMe()">
+          <span>🗺</span>الخريطة
+        </button>
+        <button class="bottom-item" onclick="toggleTracking()">
+          <span>⏺</span>التتبع
+        </button>
+        <button class="bottom-item" onclick="showSpots()">
+          <span>📍</span>النقاط
+        </button>
+        <button class="bottom-item" onclick="toggleLayers()">
+          <span>⚙</span>الطبقات
+        </button>
+      </nav>
+    </section>
+  </div>
 
-  if(heading!=null&&!isNaN(heading)){
-   const boat=marker.getElement()?.querySelector('.boat-icon');
-   if(boat)boat.style.transform=`rotate(${heading}deg)`;
-  }
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  const kmh=speed&&!isNaN(speed)?Math.max(0,speed*3.6):0;
-  document.getElementById('speed').textContent=kmh.toFixed(1);
+  <script>
+    let map;
+    let marker = null;
+    let accuracyCircle = null;
+    let routeLine = null;
+    let watchId = null;
+    let tracking = false;
+    let route = [];
+    let totalDistance = 0;
+    let maxSpeed = 0;
+    let startTime = null;
+    let durationTimer = null;
+    let lastPosition = null;
+    let currentPosition = null;
+    let currentHeading = 0;
 
-  if(tracking){
-   maxSpeed=Math.max(maxSpeed,kmh);
-   document.getElementById('max').textContent=maxSpeed.toFixed(1);
-   track.push([lat,lng]);
+    const savedSpots = JSON.parse(
+      localStorage.getItem("redline_spots") || "[]"
+    );
 
-   if(last)distance+=distanceKm(last[0],last[1],lat,lng);
-   document.getElementById('distance').textContent=distance.toFixed(2);
+    const myIcon = L.divIcon({
+      className: "boat-marker",
+      html: "🚤",
+      iconSize: [40, 40],
+      iconAnchor: [20, 20]
+    });
 
-   if(!line)line=L.polyline(track,{color:'#e63946',weight:4}).addTo(map);
-   else line.setLatLngs(track);
-  }
+    const spotIcon = L.divIcon({
+      className: "spot-marker",
+      html: "📍",
+      iconSize: [35, 35],
+      iconAnchor: [17, 32]
+    });
 
-  last=[lat,lng];
- },()=>{
-  show('⚠️ فعّل GPS واسمح بالوصول إلى الموقع');
- },{
-  enableHighAccuracy:true,
-  maximumAge:2000,
-  timeout:10000
- });
-}
+    const seaLayer = L.tileLayer(
+      "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+      {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap"
+      }
+    );
 
-function centerMe(){
- if(position)map.setView([
-  position.coords.latitude,
-  position.coords.longitude
- ],16);
- else show('⚠️ في انتظار GPS');
-}
+    const openSeaMap = L.tileLayer(
+      "https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png",
+      {
+        maxZoom: 18,
+        opacity: .85,
+        attribution: "OpenSeaMap"
+      }
+    );
 
-function toggleTrack(){
- tracking=!tracking;
- if(tracking){
-  track=[];distance=0;maxSpeed=0;last=null;
-  if(line){map.removeLayer(line);line=null}
-  document.getElementById('distance').textContent='0.00';
-  document.getElementById('max').textContent='0.0';
-  show('🔴 بدأ تسجيل المسار');
- }else show('✅ تم إيقاف المسار');
-}
+    const depthLayer = L.tileLayer(
+      "https://server.arcgisonline.com/ArcGIS/rest/services/Ocean/World_Ocean_Base/MapServer/tile/{z}/{y}/{x}",
+      {
+        maxZoom: 13,
+        opacity: .65,
+        attribution: "Esri"
+      }
+    );
 
-function saveSpot(){
- if(!position)return show('⚠️ في انتظار GPS');
- const spots=JSON.parse(localStorage.getItem('spots')||'[]');
- spots.push({
-  lat:position.coords.latitude,
-  lng:position.coords.longitude,
-  date:new Date().toLocaleString('ar')
- });
- localStorage.setItem('spots',JSON.stringify(spots));
- show('✅ تم حفظ النقطة');
-}
+    map = L.map("map", {
+      zoomControl: false,
+      layers: [seaLayer]
+    }).setView([24.7136, 46.6753], 5);
 
-function toggleSea(){
- if(sea){
-  map.removeLayer(sea);sea=null;show('🌊 تم إخفاء علامات البحر');
- }else{
-  sea=L.tileLayer(
-   'https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',
-   {maxZoom:18}
-  ).addTo(map);
-  show('🌊 تم عرض علامات البحر');
- }
-}
+    L.control.zoom({ position: "topright" }).addTo(map);
 
-function toggleDepth(){
- if(depth){
-  map.removeLayer(depth);depth=null;show('📉 تم إخفاء الأعماق');
- }else{
-  depth=L.tileLayer(
-   'https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Bathymetry/MapServer/tile/{z}/{y}/{x}',
-   {maxZoom:15,opacity:.7}
-  ).addTo(map);
-  show('📊 تم عرض الأعماق');
- }
-}
+    L.control.layers(
+      {
+        "الخريطة الأساسية": seaLayer
+      },
+      {
+        "خرائط البحر": openSeaMap,
+        "طبقة الأعماق": depthLayer
+      },
+      {
+        position: "topright",
+        collapsed: true
+      }
+    ).addTo(map);
 
-function show(message){
- const t=document.getElementById('toast');
- t.textContent=message;
- t.style.display='block';
- setTimeout(()=>t.style.display='none',2500);
-}
+    // محاولة تشغيل GPS مباشرة
+    startGPS();
 
-startGPS();
-</script>
+    function startGPS() {
+      if (!navigator.geolocation) {
+        setGPSStatus("GPS غير مدعوم", "error");
+        return;
+      }
+
+      watchId = navigator.geolocation.watchPosition(
+        updatePosition,
+        gpsError,
+        {
+          enableHighAccuracy: true,
+          maximumAge: 1000,
+          timeout: 15000
+        }
+      );
+    }
+
+    function updatePosition(position) {
+      const { latitude, longitude, accuracy, speed, heading } =
+        position.coords;
+
+      currentPosition = {
+        lat: latitude,
+        lng: longitude,
+        accuracy,
+        speed: speed || 0,
+        heading
+      };
+
+      setGPSStatus("GPS متصل", "active");
+
+      if (!marker) {
+        marker = L.marker([latitude, longitude], {
+          icon: myIcon
+        }).addTo(map);
+
+        accuracyCircle = L.circle([latitude, longitude], {
+          radius: accuracy,
+          color: "#19c3b1",
+          fillColor: "#19c3b1",
+          fillOpacity: .1,
+          weight: 2
+        }).addTo(map);
+
+        map.setView([latitude, longitude], 16);
+      } else {
+        marker.setLatLng([latitude, longitude]);
+        accuracyCircle
+          .setLatLng([latitude, longitude])
+          .setRadius(accuracy);
+      }
+
+      if (heading !== null && !isNaN(heading)) {
+        currentHeading = heading;
+        const element = marker.getElement();
+
+        if (element) {
+          element.style.transform =
+            `rotate(${heading}deg)`;
+        }
+      }
+
+      const speedKnots = (speed || 0) * 1.94384;
+
+      document.getElementById("speedValue").textContent =
+        speedKnots.toFixed(1) + " kn";
+
+      if (speedKnots > maxSpeed) {
+        maxSpeed = speedKnots;
+        document.getElementById("maxSpeedValue").textContent =
+          maxSpeed.toFixed(1) + " kn";
+      }
+
+      if (tracking) {
+        addRoutePoint(latitude, longitude);
+      }
+    }
+
+    function addRoutePoint(lat, lng) {
+      const point = [lat, lng];
+
+      if (route.length > 0) {
+        const previous = route[route.length - 1];
+        totalDistance += distanceBetween(
+          previous[0],
+          previous[1],
+          lat,
+          lng
+        );
+      }
+
+      route.push(point);
+
+      if (!routeLine) {
+        routeLine = L.polyline(route, {
+          color: "#ef4056",
+          weight: 5,
+          opacity: .9
+        }).addTo(map);
+      } else {
+        routeLine.setLatLngs(route);
+      }
+
+      document.getElementById("distanceValue").textContent =
+        (totalDistance / 1000).toFixed(2) + " km";
+    }
+
+    function toggleTracking() {
+      tracking = !tracking;
+
+      const button = document.getElementById("trackingBtn");
+
+      if (tracking) {
+        if (route.length === 0) {
+          totalDistance = 0;
+          maxSpeed = 0;
+          startTime = Date.now();
+        }
+
+        button.textContent = "■ إيقاف تسجيل الرحلة";
+        button.classList.add("tracking");
+
+        durationTimer = setInterval(updateDuration, 1000);
+      } else {
+        button.textContent = "▶ بدء تسجيل الرحلة";
+        button.classList.remove("tracking");
+
+        clearInterval(durationTimer);
+      }
+    }
+
+    function updateDuration() {
+      if (!startTime) return;
+
+      const seconds = Math.floor((Date.now() - startTime) / 1000);
+      const minutes = Math.floor(seconds / 60);
+      const hours = Math.floor(minutes / 60);
+
+      const time =
+        String(hours).padStart(2, "0") + ":" +
+        String(minutes % 60).padStart(2, "0") + ":" +
+        String(seconds % 60).padStart(2, "0");
+
+      document.getElementById("durationValue").textContent = time;
+    }
+
+    function locateMe() {
+      if (!currentPosition) {
+        alert("انتظر حتى يتم تحديد موقعك بواسطة GPS");
+        return;
+      }
+
+      map.setView(
+        [currentPosition.lat, currentPosition.lng],
+        17,
+        { animate: true }
+      );
+    }
+
+    function saveCurrentSpot() {
+      if (!currentPosition) {
+        alert("لم يتم تحديد موقعك بعد");
+        return;
+      }
+
+      const spot = {
+        id: Date.now(),
+        lat: currentPosition.lat,
+        lng: currentPosition.lng,
+        date: new Date().toLocaleString("ar")
+      };
+
+      savedSpots.push(spot);
+      localStorage.setItem(
+        "redline_spots",
+        JSON.stringify(savedSpots)
+      );
+
+      L.marker([spot.lat, spot.lng], {
+        icon: spotIcon
+      })
+      .addTo(map)
+      .bindPopup(
+        `<b>نقطة صيد</b><br>${spot.date}`
+      );
+
+      alert("تم حفظ نقطة الصيد بنجاح");
+    }
+
+    function showSpots() {
+      const panel = document.getElementById("spotsPanel");
+      const list = document.getElementById("spotsList");
+
+      list.innerHTML = "";
+
+      if (savedSpots.length === 0) {
+        list.innerHTML = "<p>لا توجد نقاط محفوظة حتى الآن.</p>";
+      } else {
+        savedSpots.slice().reverse().forEach(spot => {
+          const row = document.createElement("div");
+          row.className = "spot-row";
+
+          row.innerHTML = `
+            <div>
+              <b>📍 نقطة صيد</b><br>
+              <small>${spot.date}</small><br>
+              <small>${spot.lat.toFixed(5)}, ${spot.lng.toFixed(5)}</small>
+            </div>
+            <button onclick="deleteSpot(${spot.id})">حذف</button>
+          `;
+
+          row.onclick = event => {
+            if (event.target.tagName !== "BUTTON") {
+              map.setView([spot.lat, spot.lng], 17);
+              closeSpots();
+            }
+          };
+
+          list.appendChild(row);
+
+          L.marker([spot.lat, spot.lng], {
+            icon: spotIcon
+          })
+          .addTo(map)
+          .bindPopup(`<b>نقطة صيد</b><br>${spot.date}`);
+        });
+      }
+
+      panel.classList.add("show");
+    }
+
+    function closeSpots() {
+      document.getElementById("spotsPanel").classList.remove("show");
+    }
+
+    function deleteSpot(id) {
+      const index = savedSpots.findIndex(spot => spot.id === id);
+
+      if (index !== -1) {
+        savedSpots.splice(index, 1);
+        localStorage.setItem(
+          "redline_spots",
+          JSON.stringify(savedSpots)
+        );
+        showSpots();
+      }
+    }
+
+    function toggleLayers() {
+      const controls = document.querySelector(".leaflet-control-layers");
+      controls.classList.toggle("leaflet-control-layers-expanded");
+    }
+
+    function exportGPX() {
+      if (route.length < 2) {
+        alert("سجل مساراً أولاً حتى تستطيع تصديره");
+        return;
+      }
+
+      const points = route.map(point => `
+        <trkpt lat="${point[0]}" lon="${point[1]}"></trkpt>
+      `).join("");
+
+      const gpx = `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Redline Fishing"
+xmlns="http://www.topografix.com/GPX/1/1">
+<trk>
+<name>Redline Fishing Track</name>
+<trkseg>
+${points}
+</trkseg>
+</trk>
+</gpx>`;
+
+      const blob = new Blob([gpx], {
+        type: "application/gpx+xml"
+      });
+
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+
+      link.href = url;
+      link.download = "redline-fishing-track.gpx";
+      link.click();
+
+      URL.revokeObjectURL(url);
+    }
+
+    function setGPSStatus(text, status) {
+      document.getElementById("gpsText").textContent = text;
+
+      const dot = document.getElementById("gpsDot");
+      dot.className = "gps-dot " + status;
+    }
+
+    function gpsError(error) {
+      setGPSStatus("تعذر تحديد GPS", "error");
+
+      if (error.code === 1) {
+        alert("يجب السماح للتطبيق باستخدام الموقع من إعدادات المتصفح");
+      }
+    }
+
+    function distanceBetween(lat1, lon1, lat2, lon2) {
+      const earthRadius = 6371000;
+      const toRadians = value => value * Math.PI / 180;
+
+      const dLat = toRadians(lat2 - lat1);
+      const dLon = toRadians(lon2 - lon1);
+
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos(toRadians(lat1)) *
+        Math.cos(toRadians(lat2)) *
+        Math.sin(dLon / 2) ** 2;
+
+      return earthRadius * 2 *
+        Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    // تحميل النقاط المحفوظة على الخريطة
+    savedSpots.forEach(spot => {
+      L.marker([spot.lat, spot.lng], {
+        icon: spotIcon
+      })
+      .addTo(map)
+      .bindPopup(`<b>نقطة صيد</b><br>${spot.date}`);
+    });
+  </script>
 </body>
 </html>
