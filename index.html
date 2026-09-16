@@ -3,66 +3,93 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#1a1a2e">
+<meta name="theme-color" content="#0f0f1a">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Redline Fishing 🎣</title>
 <link rel="icon" href="https://i.imgur.com/sE2H0uM.png">
 <link rel="apple-touch-icon" href="https://i.imgur.com/sE2H0uM.png">
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- أيقونات -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-body { font-family:'Segoe UI', Tahoma, sans-serif; background:#0f0f1a; color:#eee; min-height:100vh; }
+body { font-family:'Segoe UI', Tahoma, sans-serif; background:#0f0f1a; color:#eee;
+  height:100vh; display:flex; flex-direction:column; overflow:hidden; }
 
-/* ===== الشاشة الافتتاحية ===== */
+/* ===== شاشة البداية ===== */
 #splash { position:fixed; inset:0; background:#0f0f1a; display:flex; flex-direction:column;
-  align-items:center; justify-content:center; z-index:999; transition:opacity .6s; }
-#splash img { width:140px; animation:pulse 2s infinite; }
-#splash h1 { margin-top:16px; font-size:26px; color:#e63946; letter-spacing:1px; }
+  align-items:center; justify-content:center; z-index:9999; transition:opacity .6s; }
+#splash img { width:150px; animation:pulse 2s infinite; }
+#splash h1 { margin-top:16px; font-size:28px; color:#e63946; letter-spacing:1px; }
 #splash p { color:#888; margin-top:6px; font-size:13px; }
-@keyframes pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.06);} }
+@keyframes pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.07);} }
 
 /* ===== الهيدر ===== */
-header { display:flex; align-items:center; gap:10px; padding:12px 16px;
-  background:#1a1a2e; border-bottom:2px solid #e63946; position:sticky; top:0; z-index:10; }
-header img { width:40px; height:40px; border-radius:8px; }
-header h1 { font-size:18px; color:#fff; flex:1; }
-header h1 span { color:#e63946; }
-#statusDot { width:10px; height:10px; border-radius:50%; background:#555; }
-#statusDot.on { background:#2ecc71; box-shadow:0 0 8px #2ecc71; }
+header { display:flex; align-items:center; gap:10px; padding:8px 14px;
+  background:#1a1a2e; border-bottom:2px solid #e63946; z-index:1000; }
+header img { width:38px; height:38px; border-radius:8px; }
+#headerInfo { flex:1; min-width:0; }
+#headerInfo h1 { font-size:16px; color:#fff; }
+#headerInfo h1 span { color:#e63946; }
+#gpsLine { font-size:12px; color:#aaa; white-space:nowrap; overflow:hidden; }
+#gpsLine b { color:#e63946; }
+#satDot { width:11px; height:11px; border-radius:50%; background:#555; flex-shrink:0; }
+#satDot.on { background:#2ecc71; box-shadow:0 0 8px #2ecc71; animation:blink 2s infinite; }
+@keyframes blink { 50%{opacity:.5;} }
 
-/* ===== المحتوى ===== */
-main { padding:16px; max-width:600px; margin:0 auto; }
-.card { background:#1a1a2e; border-radius:14px; padding:16px; margin-bottom:14px;
-  border:1px solid #2a2a4a; }
-.card h2 { font-size:15px; color:#e63946; margin-bottom:12px; display:flex; align-items:center; gap:8px; }
-.big { font-size:34px; font-weight:700; color:#fff; text-align:center; }
-.big small { font-size:14px; color:#888; font-weight:400; }
-.row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #2a2a4a; font-size:14px; }
-.row:last-child { border:none; }
-.row .val { color:#e63946; font-weight:600; }
+/* ===== شريط الأزرار ===== */
+#toolbar { display:flex; gap:6px; padding:8px; background:#16162a; overflow-x:auto; z-index:1000; }
+#toolbar::-webkit-scrollbar { display:none; }
+.tbtn { flex-shrink:0; display:flex; align-items:center; gap:6px; padding:10px 14px;
+  border:none; border-radius:10px; font-size:14px; font-weight:700; color:#fff;
+  cursor:pointer; font-family:inherit; }
+.tbtn:active { transform:scale(.95); }
+.tbtn.red { background:#e63946; }
+.tbtn.purple { background:#7b2cbf; }
+.tbtn.navy { background:#1d3557; }
+.tbtn.teal { background:#0e7c6b; }
+.tbtn.green { background:#2a9d3f; }
+.tbtn.orange { background:#e07b00; flex:1; justify-content:center; }
+.tbtn.brown { background:#5a3a2a; flex:1; justify-content:center; }
+.tbtn.active { outline:3px solid #fff; }
 
-/* ===== الأزرار ===== */
-button { width:100%; padding:14px; border:none; border-radius:12px; font-size:16px;
-  font-weight:700; cursor:pointer; margin-top:10px; transition:transform .1s; }
-button:active { transform:scale(.97); }
-#btnTrack { background:#e63946; color:#fff; }
-#btnTrack.active { background:#7a1020; }
-#btnSave { background:transparent; color:#e63946; border:2px solid #e63946; }
+/* ===== الخريطة ===== */
+#map { flex:1; z-index:1; background:#0f0f1a; }
 
-/* ===== قائمة النقاط ===== */
+/* ===== الشريط السفلي ===== */
+#bottomBar { display:flex; background:#1a1a2e; border-top:2px solid #e63946;
+  padding:8px 4px; z-index:1000; }
+.stat { flex:1; text-align:center; font-size:17px; font-weight:700; color:#fff; }
+.stat small { display:block; font-size:10px; color:#888; font-weight:400; margin-top:2px; }
+.stat .red { color:#e63946; }
+
+/* ===== لوحة النقاط ===== */
+#panel { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:2000;
+  display:none; align-items:flex-end; }
+#panel.show { display:flex; }
+#panelContent { background:#1a1a2e; width:100%; max-height:70vh; overflow-y:auto;
+  border-radius:20px 20px 0 0; padding:20px 16px; border-top:3px solid #e63946; }
+#panelContent h2 { color:#e63946; font-size:17px; margin-bottom:14px; }
 .spot { display:flex; align-items:center; gap:12px; padding:12px; background:#222240;
   border-radius:10px; margin-bottom:8px; }
-.spot .icon { font-size:24px; }
-.spot .info { flex:1; }
+.spot .info { flex:1; min-width:0; }
 .spot .info b { font-size:14px; display:block; }
-.spot .info small { color:#888; font-size:12px; }
-.spot .go { color:#e63946; font-size:13px; font-weight:700; cursor:pointer; }
-.empty { text-align:center; color:#666; padding:20px; font-size:13px; }
+.spot .info small { color:#888; font-size:11px; display:block; }
+.spot .go { color:#e63946; font-size:13px; font-weight:700; cursor:pointer; padding:6px; }
+.spot .del { color:#f77; font-size:15px; cursor:pointer; padding:6px; }
+.empty { text-align:center; color:#666; padding:24px; font-size:13px; }
+.closeBtn { width:100%; padding:12px; background:#e63946; color:#fff; border:none;
+  border-radius:10px; font-size:15px; font-weight:700; margin-top:10px; font-family:inherit; }
 
-/* ===== الإشعارات ===== */
-#toast { position:fixed; bottom:20px; left:50%; transform:translateX(-50%) translateY(80px);
+/* ===== إشعار ===== */
+#toast { position:fixed; bottom:70px; left:50%; transform:translateX(-50%) translateY(80px);
   background:#e63946; color:#fff; padding:12px 24px; border-radius:24px; font-size:14px;
-  font-weight:600; transition:transform .3s; z-index:99; white-space:nowrap; }
+  font-weight:600; transition:transform .3s; z-index:3000; white-space:nowrap; }
 #toast.show { transform:translateX(-50%) translateY(0); }
 </style>
 </head>
@@ -75,128 +102,108 @@ button:active { transform:scale(.97); }
   <p>GPS لصيادي الكاياك 🛶🎣</p>
 </div>
 
+<!-- الهيدر -->
 <header>
   <img src="https://i.imgur.com/sE2H0uM.png" alt="لوغو">
-  <h1>Redline <span>Fishing</span></h1>
-  <div id="statusDot"></div>
+  <div id="headerInfo">
+    <h1>Redline <span>Fishing</span></h1>
+    <div id="gpsLine">🧭 -- | <b>--</b> 📍</div>
+  </div>
+  <div id="satDot"></div>
 </header>
 
-<main>
-  <!-- الموقع الحالي -->
-  <div class="card">
-    <h2>📍 موقعك الحالي</h2>
-    <div class="big" id="speed">0.0 <small>عقدة</small></div>
-    <div class="row"><span>الإحداثيات</span><span class="val" id="coords">--</span></div>
-    <div class="row"><span>الدقة</span><span class="val" id="accuracy">--</span></div>
-    <div class="row"><span>الاتجاه</span><span class="val" id="heading">--</span></div>
-  </div>
+<!-- شريط الأزرار -->
+<div id="toolbar">
+  <button class="tbtn green" onclick="centerMe()"><i class="fa-solid fa-crosshairs"></i> هدف</button>
+  <button class="tbtn teal" onclick="toggleDepth()"><i class="fa-solid fa-chart-line"></i> أعماق</button>
+  <button class="tbtn navy" onclick="toggleSea()"><i class="fa-solid fa-water"></i> بحر</button>
+  <button class="tbtn purple" id="trackBtn" onclick="toggleTrack()"><i class="fa-solid fa-route"></i> مسار</button>
+  <button class="tbtn red" onclick="openSpots()"><i class="fa-solid fa-clipboard-list"></i> نقاطي</button>
+</div>
+<div style="display:flex; gap:8px; padding:0 8px 8px; background:#16162a; z-index:1000;">
+  <button class="tbtn orange" onclick="saveSpot()"><i class="fa-solid fa-floppy-disk"></i> حفظ</button>
+  <button class="tbtn brown" onclick="exportGPX()"><i class="fa-solid fa-file-export"></i> GPX</button>
+</div>
 
-  <!-- التتبع -->
-  <div class="card">
-    <h2>🔴 تتبع الرحلة (Redline)</h2>
-    <div class="row"><span>المسافة المقطوعة</span><span class="val" id="distance">0.0 كم</span></div>
-    <div class="row"><span>مدة الرحلة</span><span class="val" id="duration">00:00</span></div>
-    <div class="row"><span>أقصى سرعة</span><span class="val" id="maxSpeed">0.0 عقدة</span></div>
-    <button id="btnTrack" onclick="toggleTrack()">▶️ بدء التتبع</button>
-  </div>
+<!-- الخريطة -->
+<div id="map"></div>
 
-  <!-- نقاط الصيد -->
-  <div class="card">
+<!-- الشريط السفلي -->
+<div id="bottomBar">
+  <div class="stat"><span id="stSpeed" class="red">0.0</span><small>سرعة km/h</small></div>
+  <div class="stat"><span id="stTime">00:00</span><small>المدة ⏱️</small></div>
+  <div class="stat"><span id="stDist" class="red">0.00</span><small>المسافة كم</small></div>
+  <div class="stat"><span id="stMax">0.0</span><small>أقصى ⚡</small></div>
+</div>
+
+<!-- لوحة النقاط -->
+<div id="panel" onclick="if(event.target===this)closePanel()">
+  <div id="panelContent">
     <h2>🎯 نقاط الصيد المحفوظة</h2>
-    <div id="spotsList"><div class="empty">لا توجد نقاط محفوظة بعد</div></div>
-    <button id="btnSave" onclick="saveSpot()">💾 حفظ موقعي كنقطة صيد</button>
+    <div id="spotsList"></div>
+    <button class="closeBtn" onclick="closePanel()">إغلاق</button>
   </div>
-</main>
+</div>
 
 <div id="toast"></div>
 
 <script>
-let watchId=null, tracking=false, startPos=null, totalDist=0, maxSpd=0, startTime=null;
-let lastPos=null;
-
+// ===== الحالة =====
+let map, marker, accuracyCircle, trackLine;
+let pos=null, watchId=null;
+let tracking=false, trackPts=[], totalDist=0, maxSpd=0, startTime=null, lastPos=null;
+let depthLayer=null, seaLayer=null;
+const LOGO='https://i.imgur.com/sE2H0uM.png';
 const $=id=>document.getElementById(id);
 
-function toast(m){ const t=$('toast'); t.textContent=m; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),2500); }
+// ===== الخريطة =====
+map = L.map('map').setView([36.7786, 10.2279], 14);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  attribution:'© OpenStreetMap', maxZoom:19 }).addTo(map);
 
-function fmtCoord(v,pos){ return v.toFixed(5)+'°'+(pos==='N'?' شمالاً':pos==='E'?' شرقاً':''); }
+// أيقونة اللوغو للموقع الحالي
+const myIcon = L.icon({ iconUrl:LOGO, iconSize:[34,34], className:'pulse-icon' });
 
+// ===== GPS =====
 function startGPS(){
   if(!navigator.geolocation){ toast('❌ الجهاز لا يدعم GPS'); return; }
-  watchId = navigator.geolocation.watchPosition(pos=>{
-    $('statusDot').classList.add('on');
-    const {latitude:lat, longitude:lng, accuracy:acc, speed, heading}=pos.coords;
-    $('coords').textContent = lat.toFixed(4)+', '+lng.toFixed(4);
-    $('accuracy').textContent = '±'+Math.round(acc)+' م';
-    $('heading').textContent = heading!=null && !isNaN(heading) ? Math.round(heading)+'°' : '--';
-    const knots = speed!=null && !isNaN(speed) ? speed*1.94384 : 0;
-    $('speed').innerHTML = knots.toFixed(1)+' <small>عقدة</small>';
-    if(tracking){
-      maxSpd = Math.max(maxSpd,knots); $('maxSpeed').textContent = maxSpd.toFixed(1)+' عقدة';
-      if(lastPos){
-        totalDist += haversine(lastPos.lat,lastPos.lng,lat,lng);
-        $('distance').textContent = totalDist.toFixed(2)+' كم';
-      }
-      const secs = Math.floor((Date.now()-startTime)/1000);
-      $('duration').textContent = String(Math.floor(secs/60)).padStart(2,'0')+':'+String(secs%60).padStart(2,'0');
+  watchId = navigator.geolocation.watchPosition(p=>{
+    $('satDot').classList.add('on');
+    pos=p;
+    const {latitude:lat, longitude:lng, accuracy:acc, speed, heading}=p.coords;
+    const hdg = (heading!=null && !isNaN(heading)) ? Math.round(heading)+'°' : '--';
+    (′gpsLine′).innerHTML=‘🧭('gpsLine').innerHTML = `🧭(′gpsLine′).innerHTML=‘🧭{hdg} | <b>lat.toFixed(5),{lat.toFixed(5)},lat.toFixed(5),{lng.toFixed(5)}</b> 📍`;
+    if(!marker){
+      marker = L.marker([lat,lng],{icon:myIcon}).addTo(map);
+      accuracyCircle = L.circle([lat,lng],{radius:acc,color:'#e63946',weight:1,fillOpacity:.08}).addTo(map);
+      map.setView([lat,lng],15);
+    } else {
+      marker.setLatLng([lat,lng]);
+      accuracyCircle.setLatLng([lat,lng]).setRadius(acc);
     }
-    lastPos={lat,lng};
-  }, err=>{
-    $('statusDot').classList.remove('on');
-    toast('⚠️ فعّل GPS واسمح بالموقع');
-  }, {enableHighAccuracy:true, maximumAge:2000, timeout:10000});
-}
-
-function haversine(la1,lo1,la2,lo2){
-  const R=6371, dLa=(la2-la1)*Math.PI/180, dLo=(lo2-lo1)*Math.PI/180;
-  const a=Math.sin(dLa/2)**2 + Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLo/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-}
-
-function toggleTrack(){
-  tracking=!tracking;
-  const btn=$('btnTrack');
-  if(tracking){
-    totalDist=0; maxSpd=0; startTime=Date.now(); lastPos=null;
-    btn.textContent='⏸️ إيقاف التتبع'; btn.classList.add('active');
-    toast('🔴 بدأ تتبع Redline!');
-  } else {
-    btn.textContent='▶️ بدء التتبع'; btn.classList.remove('active');
-    toast('📊 انتهت الرحلة: '+totalDist.toFixed(2)+' كم');
-  }
-}
-
-function saveSpot(){
-  if(!lastPos){ toast('⚠️ في انتظار إشارة GPS...'); return; }
-  const spots = JSON.parse(localStorage.getItem('redline_spots')||'[]');
-  const name = 'نقطة '+new Date().toLocaleTimeString('ar',{hour:'2-digit',minute:'2-digit'});
-  spots.push({name, lat:lastPos.lat, lng:lastPos.lng, date:new Date().toLocaleDateString('ar')});
-  localStorage.setItem('redline_spots',JSON.stringify(spots));
-  renderSpots(); toast('✅ تم حفظ نقطة الصيد!');
-}
-
-function renderSpots(){
-  const spots = JSON.parse(localStorage.getItem('redline_spots')||'[]');
-  const list=$('spotsList');
-  if(!spots.length){ list.innerHTML='<div class="empty">لا توجد نقاط محفوظة بعد</div>'; return; }
-  list.innerHTML = spots.map((s,i)=>{
-    const d = lastPos ? haversine(lastPos.lat,lastPos.lng,s.lat,s.lng).toFixed(2)+' كم' : '--';
-    return `<div class="spot"><div class="icon">🎣</div>
-      <div class="info"><b>s.name</b><small>{s.name}</b><small>s.name</b><small>{s.lat.toFixed(4)}, s.lng.toFixed(4)•{s.lng.toFixed(4)} •s.lng.toFixed(4)•{d}</small></div>
-      <div class="go" onclick="navigate(s.lat,{s.lat},s.lat,{s.lng})">اذهب ↗</div></div>`;
-  }).join('');
-}
-
-function navigate(lat,lng){
-  window.open(`https://www.google.com/maps/dir/?api=1&destination=lat,{lat},lat,{lng}&travelmode=driving`);
-  toast('🧭 فتح الملاحة...');
-}
-
-// تشغيل
-setTimeout(()=>{ $('splash').style.opacity='0';
-  setTimeout(()=>$('splash').remove(),700); }, 2200);
+    const kmh = (speed!=null && !isNaN(speed)) ? Math.max(0,speed*3.6) : 0;
+    $('stSpeed').textContent = kmh.toFixed(1);
+    if(tracking){
+      maxSpd=Math.max(maxSpd,kmh); $('stMax').textContent=maxSpd.toFixed(1);
+      trackPts.push([lat,lng]);
+      if(!trackLine) trackLine=L.polyline(trackPts,{color:'#e63946',weight:4}).addTo(map);
+      else trackLine.setLatLngs(trackPts);
+      if(lastPos) totalDist += haversine(lastPos.lat,lastPos.lng,lat,lng);
+      $('stDist').textContent = totalDist.toFixed(2);
+      const s=Math.floor((Date.now()-startTime)/1000);
+      $('stTime').textContent = String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'function toggleDepth(){if(depthLayer){map.removeLayer(depthLayer);depthLayer=null;toast('📉 إخفاء الأعماق');return;}
+depthLayer=L.tileLayer('https://tiles.arcgis.com/tiles/P3ePLMYs2RVChkJx/arcgis/rest/services/World_Bathymetry/MapServer/tile/{z}/{y}/{x}',{maxZoom:15,opacity:.7}).addTo(map);toast('📊 عرض الأعماق');}
+function toggleSea(){if(seaLayer){map.removeLayer(seaLayer);seaLayer=null;toast('🌊 إخفاء البحر');return;}
+seaLayer=L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);toast('🌊 علامات البحر');}
+function exportGPX(){if(!trackPts.length){toast('⚠️ ابدأ التتبع أولاً');return;}
+let g='<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Redline Fishing">\n<trk><trkseg>\n';
+trackPts.forEach(p=>{g+='<trkpt lat="'+p[0]+'" lon="'+p[1]+'"></trkpt>\n';});
+g+='</trkseg></trk></gpx>';
+const b=new Blob([g],{type:'application/gpx+xml'});
+const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='redline-track.gpx';a.click();toast('📤 تم التنزيل');}
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500);}
+setTimeout(()=>{(′splash′).style.opacity=′0′;setTimeout(()=>('splash').style.opacity='0';setTimeout(()=>(′splash′).style.opacity=′0′;setTimeout(()=>('splash').remove(),700);},2200);
 startGPS();
-renderSpots();
 </script>
 </body>
 </html>
