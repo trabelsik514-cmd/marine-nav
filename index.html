@@ -8,110 +8,96 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; font-family:sans-serif; }
-body { height:100vh; display:flex; flex-direction:column; overflow:hidden; }
-#topbar { background:#01579b; color:#fff; padding:10px; text-align:center; font-size:18px; }
-#map { flex:1; }
-#dist { background:#0277bd; color:#fff; padding:8px; text-align:center; font-size:20px; }
-#toolbar { display:flex; flex-wrap:wrap; gap:6px; padding:8px; background:#eceff1; }
+html, body { width:100%; height:100%; }
+body { display:flex; flex-direction:column; }
+#topbar { background:#01579b; color:#fff; padding:10px; text-align:center; font-size:16px; }
+#toolbar { display:flex; flex-wrap:wrap; gap:6px; padding:8px; background:#eceff1; z-index:1000; }
 #toolbar button { flex:1; min-width:60px; padding:10px 4px; border:none; border-radius:8px; color:#fff; font-size:14px; cursor:pointer; }
+#map { flex:1; min-height:250px; width:100%; z-index:1; }
+#dist { background:#0277bd; color:#fff; padding:8px; text-align:center; font-size:18px; }
 #msg { position:fixed; top:60px; left:50%; transform:translateX(-50%); background:#000c; color:#fff; padding:8px 16px; border-radius:20px; display:none; z-index:9999; }
-#compass { position:fixed; top:80px; right:10px; width:90px; height:90px; background:#fff; border-radius:50%; border:3px solid #f57c00; display:none; z-index:999; text-align:center; }
-#compassArrow { font-size:40px; line-height:60px; display:inline-block; }
-#weatherBox { position:fixed; bottom:130px; left:10px; background:#fff; padding:10px; border-radius:8px; box-shadow:0 2px 8px #0005; display:none; z-index:999; font-size:14px; }
 #spotsList { position:fixed; inset:0; background:#fff; z-index:9998; display:none; overflow:auto; padding:16px; }
 #spotsList button { display:block; width:100%; margin:6px 0; padding:12px; background:#0277bd; color:#fff; border:none; border-radius:8px; font-size:16px; }
-body.night { background:#102027; }
-body.night #toolbar, body.night #spotsList { background:#263238; color:#fff; }
 </style>
 </head>
 <body>
-<div id="topbar">📍 ...</div>
+<div id="topbar">📍 جاري تحديد الموقع...</div>
+<div id="toolbar">
+  <button id="destBtn" style="background:#2e7d32">🎯 هدف</button>
+  <button id="depthBtn" style="background:#00695c">📉 أعماق</button>
+  <button id="seaBtn" style="background:#283593">🌊 بحر</button>
+  <button id="trackBtn" style="background:#8e24aa">📉 مسار</button>
+  <button id="spotsBtn" style="background:#c62828">📋 نقاطي</button>
+</div>
 <div id="map"></div>
 <div id="dist">--</div>
-<div id="toolbar">
-  <button id="langBtn" style="background:#5e35b1">🌐 FR</button>
-  <button id="destBtn" style="background:#2e7d32">🎯</button>
-  <button id="depthBtn" style="background:#00695c">📉</button>
-  <button id="seaBtn" style="background:#283593">🌊</button>
-  <button id="trackBtn" style="background:#8e24aa">📉</button>
-  <button id="compassBtn" style="background:#f57c00">🧭</button>
-  <button id="nightBtn" style="background:#37474f">🌙</button>
-  <button id="spotsBtn" style="background:#c62828">📋</button>
-</div>
 <div id="msg"></div>
-<div id="compass"><span id="compassArrow">⬆️</span><br><span id="compassDeg">--</span></div>
-<div id="weatherBox"></div>
-<div id="spotsList"><h3>📋 نقاطي</h3><div id="spotsDiv"></div>
+<div id="spotsList"><h3>📋 نقاطي</h3><div id="spotsDiv"></div><br>
 <button onclick="document.getElementById('spotsList').style.display='none'">❌ إغلاق</button></div>
 
 <script>
-var T = {
-  ar:{locating:'جاري تحديد الموقع...',dist:'المسافة',saved:'تم حفظ النقطة ✅',trackOn:'بدأ تسجيل المسار',trackOff:'توقف التسار — المسافة:',spots:'نقاطي',dest:'اضغط على الخريطة لتحديد الهدف'},
-  fr:{locating:'Localisation...',dist:'Distance',saved:'Point enregistré ✅',trackOn:'Enregistrement du tracé',trackOff:'Arrêt — distance:',spots:'Mes points',dest:'Touchez la carte pour choisir la destination'}
-};
-var lang='ar';
-function t(k){ return T[lang][k]||k; }
 function showMsg(m){ var e=document.getElementById('msg'); e.textContent=m; e.style.display='block'; setTimeout(function(){e.style.display='none';},2500); }
 
-var map = L.map('map').setView([35.5,11.0], 11);
+var map = L.map('map').setView([36.77,10.22], 12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+setTimeout(function(){ map.invalidateSize(); },500);
 
 var depthLayer=null, seaLayer=null;
 document.getElementById('depthBtn').onclick=function(){
   if(depthLayer){ map.removeLayer(depthLayer); depthLayer=null; this.style.background='#00695c'; }
   else{
-    depthLayer = L.tileLayer.wms('https://ows.emodnet-bathymetry.eu/wms',{
-      layers:'emodnet:mean_2016', format:'image/png', transparent:true, opacity:0.6
-    }).addTo(map);
-    this.style.background='#00e676'; showMsg('📉 OK');
+    depthLayer = L.tileLayer.wms('https://ows.emodnet-bathymetry.eu/wms',{layers:'emodnet:mean_2016',format:'image/png',transparent:true,opacity:0.6}).addTo(map);
+    this.style.background='#00e676'; showMsg('📉 طبقة الأعماق ✅');
   }
 };
 document.getElementById('seaBtn').onclick=function(){
   if(seaLayer){ map.removeLayer(seaLayer); seaLayer=null; this.style.background='#283593'; }
   else{
-    seaLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',{maxZoom:18,opacity:0.9}).addTo(map);
-    this.style.background='#00e676'; showMsg('🌊 OK');
+    seaLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);
+    this.style.background='#00e676'; showMsg('🌊 العلامات البحرية ✅');
   }
 };
 
-// ===== نقاط الحفظ =====
 var spots = JSON.parse(localStorage.getItem('spots')||'[]');
 function saveSpots(){ localStorage.setItem('spots', JSON.stringify(spots)); }
-function drawSpots(){ spots.forEach(function(s){ L.circleMarker([s.lat,s.lng],{radius:8,color:'#c62828'}).addTo(map).bindPopup('📌 '+s.name); }); }
 
-var myPos=null, myMarker=null, destMarker=null, currentDest=null, weatherOnce=false;
+var myPos=null, myMarker=null, destMarker=null, currentDest=null;
 function dist(a,b){ var R=6371000,dLa=(b.lat-a.lat)*Math.PI/180,dLo=(b.lng-a.lng)*Math.PI/180;
-  var x=Math.sin(dLa/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLo/2)**2;
+  var x=Math.sin(dLa/2)*Math.sin(dLa/2)+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLo/2)*Math.sin(dLo/2);
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x)); }
-function bearing(a,b){ var y=Math.sin((b.lng-a.lng)*Math.PI/180)*Math.cos(b.lat*Math.PI/180);
-  var x=Math.cos(a.lat*Math.PI/180)*Math.sin(b.lat*Math.PI/180)-Math.sin(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.cos((b.lng-a.lng)*Math.PI/180);
-  return (Math.atan2(y,x)*180/Math.PI+360)%360; }
 
-map.on('click', function(e){ if(!myPos) return;
+map.on('click', function(e){
   currentDest = e.latlng;
   if(destMarker) destMarker.setLatLng(e.latlng);
-  else destMarker = L.circleMarker(e.latlng,{radius:10,color:'#2e7d32'}).addTo(map);
-  showMsg(t('saved')+' 🎯');
-  spots.push({name:new Date().toLocaleTimeString(), lat:e.latlng.lat, lng:e.latlng.lng}); saveSpots();
+  else destMarker = L.circleMarker(e.latlng,{radius:10,color:'#2e7d32',fillColor:'#2e7d32',fillOpacity:1}).addTo(map);
+  showMsg('🎯 تم تحديد الهدف');
 });
+
+document.getElementById('destBtn').onclick=function(){ showMsg('👆 اضغط على الخريطة لتحديد الهدف'); };
 
 document.getElementById('spotsBtn').onclick=function(){
   var d=document.getElementById('spotsDiv'); d.innerHTML='';
-  if(!spots.length) d.innerHTML='<p>--</p>';
-  spots.forEach(function(s,i){
+  if(!spots.length) d.innerHTML='<p>لا توجد نقاط بعد</p>';
+  spots.forEach(function(s){
     var b=document.createElement('button');
-    b.textContent='📌 '+s.name+' ('+s.lat.toFixed(4)+', '+s.lng.toFixed(4)+')';
+    b.textContent='📌 '+s.name;
     b.onclick=function(){ map.setView([s.lat,s.lng],14); document.getElementById('spotsList').style.display='none'; };
     d.appendChild(b);
   });
   document.getElementById('spotsList').style.display='block';
 };
 
-document.getElementById('langBtn').onclick=function(){
-  lang = (lang==='ar')?'fr':'ar';
-  document.body.dir = (lang==='ar')?'rtl':'ltr';
-  this.textContent = (lang==='ar')?'🌐 FR':'🌐 AR';
-  showMsg(t('dist'));
+var tracking=false, trackPoints=[], trackLine=null;
+document.getElementById('trackBtn').onclick=function(){
+  tracking=!tracking;
+  if(tracking){ trackPoints=[]; showMsg('📉 بدأ تسجيل المسار'); this.style.background='#00e676'; }
+  else{
+    var td=0;
+    for(var i=1;i<trackPoints.length;i++)
+      td+=dist({lat:trackPoints[i-1][0],lng:trackPoints[i-1][1]},{lat:trackPoints[i][0],lng:trackPoints[i][1]});
+    showMsg(' المسار: '+(td/1000).toFixed(2)+' km');
+    this.style.background='#8e24aa';
+  }
 };
 
 function onPos(pos){
@@ -124,66 +110,11 @@ function onPos(pos){
   if(trackPoints.length>1) trackLine = L.polyline(trackPoints,{color:'#8e24aa'}).addTo(map);
   if(currentDest){
     var d = dist(myPos,currentDest);
-    document.getElementById('dist').textContent = t('dist')+': '+(d>1000?(d/1000).toFixed(2)+' km':Math.round(d)+' m');
-    if(d<50) showMsg('🎯');
-    if(destMarker) destMarker.setLatLng([currentDest.lat,currentDest.lng]);
-    if(compassOn && heading!=null){
-      var brg=bearing(myPos,currentDest), rel=(brg-heading+360)%360;
-      document.getElementById('compassArrow').style.transform='rotate('+rel+'deg)';
-      document.getElementById('compassDeg').textContent=Math.round(brg)+'°';
-    }
-  } else document.getElementById('dist').textContent='--';
-  var now=new Date();
-  document.getElementById('time');
-  if(!weatherOnce){ weatherOnce=true; getWeather(); }
+    document.getElementById('dist').textContent = '🎯 المسافة: '+(d>1000?(d/1000).toFixed(2)+' km':Math.round(d)+' m');
+  } else document.getElementById('dist').textContent = '--';
 }
-function gpsError(e){ document.getElementById('topbar').textContent='⚠️ '+t('locating'); }
+function gpsError(){ document.getElementById('topbar').textContent='⚠️ جاري تحديد الموقع...'; }
 navigator.geolocation.watchPosition(onPos,gpsError,{enableHighAccuracy:true,maximumAge:2000});
-
-function getWeather(){
-  fetch('https://api.open-meteo.com/v1/forecast?latitude='+myPos.lat+'&longitude='+myPos.lng+'&current=wind_speed_10m,wind_direction_10m,temperature_2m')
-   .then(function(r){return r.json();}).then(function(d){
-     var c=d.current, box=document.getElementById('weatherBox');
-     box.innerHTML='💨 '+Math.round(c.wind_speed_10m)+' km/h — '+Math.round(c.wind_direction_10m)+'°<br>🌡️ '+Math.round(c.temperature_2m)+'°C';
-     box.style.display='block'; setTimeout(function(){box.style.display='none';},15000);
-   }).catch(function(){});
-}
-
-var tracking=false, trackPoints=[], trackLine=null;
-document.getElementById('trackBtn').onclick=function(){
-  tracking=!tracking;
-  if(tracking){ trackPoints=[]; showMsg(t('trackOn')); this.style.background='#00e676'; }
-  else{
-    var td=0;
-    for(var i=1;i<trackPoints.length;i++)
-      td+=dist({lat:trackPoints[i-1][0],lng:trackPoints[i-1][1]},{lat:trackPoints[i][0],lng:trackPoints[i][1]});
-    showMsg(t('trackOff')+' '+(td/1000).toFixed(2)+' km');
-    this.style.background='#8e24aa';
-  }
-};
-
-var compassOn=false, heading=null;
-function deviceOrient(e){
-  if(e.webkitCompassHeading!=null) heading=e.webkitCompassHeading;
-  else if(e.alpha!=null) heading=360-e.alpha;
-}
-document.getElementById('compassBtn').onclick=function(){
-  compassOn=!compassOn;
-  document.getElementById('compass').style.display = compassOn?'block':'none';
-  this.style.background = compassOn?'#ffb74d':'#f57c00';
-  if(compassOn && window.DeviceOrientationEvent){
-    if(DeviceOrientationEvent.requestPermission)
-      DeviceOrientationEvent.requestPermission().then(function(s){ if(s==='granted') window.addEventListener('deviceorientation',deviceOrient,true); });
-    else window.addEventListener('deviceorientation',deviceOrient,true);
-  }
-};
-
-document.getElementById('nightBtn').onclick=function(){
-  document.body.classList.toggle('night');
-  this.style.background = document.body.classList.contains('night')?'#90a4ae':'#37474f';
-};
-
-saveSpots(); drawSpots();
 </script>
 </body>
 </html>
