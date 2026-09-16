@@ -3,21 +3,30 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>🎣 GPS الصياد</title>
+<title>🎣 GPS الصياد برو</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; font-family:sans-serif; }
 html, body { width:100%; height:100%; }
 body { display:flex; flex-direction:column; }
-#topbar { background:#01579b; color:#fff; padding:10px; text-align:center; font-size:16px; }
+#topbar { background:#01579b; color:#fff; padding:8px; text-align:center; font-size:15px; }
 #toolbar { display:flex; flex-wrap:wrap; gap:6px; padding:8px; background:#eceff1; z-index:1000; }
 #toolbar button { flex:1; min-width:60px; padding:10px 4px; border:none; border-radius:8px; color:#fff; font-size:14px; cursor:pointer; }
 #map { flex:1; min-height:250px; width:100%; z-index:1; }
-#dist { background:#0277bd; color:#fff; padding:8px; text-align:center; font-size:18px; }
+#panel { background:#0277bd; color:#fff; padding:6px 8px; text-align:center; font-size:15px; display:flex; justify-content:space-around; flex-wrap:wrap; }
+#panel span { padding:2px 8px; }
 #msg { position:fixed; top:60px; left:50%; transform:translateX(-50%); background:#000c; color:#fff; padding:8px 16px; border-radius:20px; display:none; z-index:9999; }
-#spotsList { position:fixed; inset:0; background:#fff; z-index:9998; display:none; overflow:auto; padding:16px; }
-#spotsList button { display:block; width:100%; margin:6px 0; padding:12px; background:#0277bd; color:#fff; border:none; border-radius:8px; font-size:16px; }
+#overlay { position:fixed; inset:0; background:#fff; z-index:9998; display:none; overflow:auto; padding:16px; }
+#overlay button { display:block; width:100%; margin:6px 0; padding:12px; background:#0277bd; color:#fff; border:none; border-radius:8px; font-size:16px; }
+.closeBtn { background:#c62828 !important; }
+.spotRow { display:flex; gap:6px; }
+.spotRow button { flex:1; }
+.delBtn { background:#e53935 !important; max-width:60px; }
+#compass { position:fixed; bottom:90px; left:16px; width:80px; height:80px; background:#fff e; background:#fffc; border-radius:50%; border:3px solid #01579b; z-index:900; display:none; align-items:center; justify-content:center; flex-direction:column; font-weight:bold; color:#01579b; }
+#compArrow { font-size:32px; transition:transform .5s; }
+#saveBox { position:fixed; top:30%; left:50%; transform:translateX(-50%); background:#fff; padding:16px; border-radius:12px; box-shadow:0 4px 20px #0006; z-index:9999; display:none; text-align:center; }
+#saveBox input { width:100%; padding:10px; margin:10px 0; border:1px solid #aaa; border-radius:8px; font-size:16px; }
 </style>
 </head>
 <body>
@@ -28,12 +37,28 @@ body { display:flex; flex-direction:column; }
   <button id="seaBtn" style="background:#283593">🌊 بحر</button>
   <button id="trackBtn" style="background:#8e24aa">📉 مسار</button>
   <button id="spotsBtn" style="background:#c62828">📋 نقاطي</button>
+  <button id="saveBtn" style="background:#ef6c00">💾 حفظ</button>
+  <button id="gpxBtn" style="background:#5d4037">📤 GPX</button>
 </div>
 <div id="map"></div>
-<div id="dist">--</div>
+<div id="panel">
+  <span id="dist">🎯 --</span>
+  <span id="speed">⚡ --</span>
+  <span id="timer">⏱️ 00:00</span>
+  <span id="sun">🌅 --</span>
+</div>
+<div id="compass"><div id="compArrow">⬆️</div><div id="compDeg" style="font-size:11px">--</div></div>
 <div id="msg"></div>
-<div id="spotsList"><h3>📋 نقاطي</h3><div id="spotsDiv"></div><br>
-<button onclick="document.getElementById('spotsList').style.display='none'">❌ إغلاق</button></div>
+
+<div id="saveBox">
+  <b>💾 حفظ نقطة</b>
+  <input id="spotName" placeholder="اسم النقطة (مثلاً: شعاب الصخور)">
+  <button style="background:#2e7d32" onclick="saveCurrentSpot()">✔️ حفظ</button>
+  <button class="closeBtn" onclick="document.getElementById('saveBox').style.display='none'">❌ إلغاء</button>
+</div>
+
+<div id="overlay"><h3>📋 نقاطي</h3><div id="spotsDiv"></div><br>
+<button class="closeBtn" onclick="document.getElementById('overlay').style.display='none'">❌ إغلاق</button></div>
 
 <script>
 function showMsg(m){ var e=document.getElementById('msg'); e.textContent=m; e.style.display='block'; setTimeout(function(){e.style.display='none';},2500); }
@@ -42,51 +67,85 @@ var map = L.map('map').setView([36.77,10.22], 12);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
 setTimeout(function(){ map.invalidateSize(); },500);
 
+/* ===== طبقات ===== */
 var depthLayer=null, seaLayer=null;
 document.getElementById('depthBtn').onclick=function(){
   if(depthLayer){ map.removeLayer(depthLayer); depthLayer=null; this.style.background='#00695c'; }
-  else{
-    depthLayer = L.tileLayer.wms('https://ows.emodnet-bathymetry.eu/wms',{layers:'emodnet:mean_2016',format:'image/png',transparent:true,opacity:0.6}).addTo(map);
-    this.style.background='#00e676'; showMsg('📉 طبقة الأعماق ✅');
-  }
+  else{ depthLayer = L.tileLayer.wms('https://ows.emodnet-bathymetry.eu/wms',{layers:'emodnet:mean_2016',format:'image/png',transparent:true,opacity:0.6}).addTo(map); this.style.background='#00e676'; showMsg('📉 طبقة الأعماق ✅'); }
 };
 document.getElementById('seaBtn').onclick=function(){
   if(seaLayer){ map.removeLayer(seaLayer); seaLayer=null; this.style.background='#283593'; }
-  else{
-    seaLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map);
-    this.style.background='#00e676'; showMsg('🌊 العلامات البحرية ✅');
-  }
+  else{ seaLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',{maxZoom:18}).addTo(map); this.style.background='#00e676'; showMsg('🌊 العلامات البحرية ✅'); }
 };
 
+/* ===== النقاط ===== */
 var spots = JSON.parse(localStorage.getItem('spots')||'[]');
 function saveSpots(){ localStorage.setItem('spots', JSON.stringify(spots)); }
 
-var myPos=null, myMarker=null, destMarker=null, currentDest=null;
+var myPos=null, myMarker=null, destMarker=null, currentDest=null, lastPos=null, lastTime=null;
+var startTime=null, timerInt=null;
 function dist(a,b){ var R=6371000,dLa=(b.lat-a.lat)*Math.PI/180,dLo=(b.lng-a.lng)*Math.PI/180;
   var x=Math.sin(dLa/2)*Math.sin(dLa/2)+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLo/2)*Math.sin(dLo/2);
   return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x)); }
+function bearing(a,b){ var dLo=(b.lng-a.lng)*Math.PI/180, y=Math.sin(dLo)*Math.cos(b.lat*Math.PI/180);
+  var x=Math.cos(a.lat*Math.PI/180)*Math.sin(b.lat*Math.PI/180)-Math.sin(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.cos(dLo);
+  return (Math.atan2(y,x)*180/Math.PI+360)%360; }
+function dirName(b){ var dirs=['شمال ⬆️','شمال شرق ↗️','شرق ➡️','جنوب شرق ↘️','جنوب ⬇️','جنوب غرب ↙️','غرب ⬅️','شمال غرب ↖️']; return dirs[Math.round(b/45)%8]; }
 
 map.on('click', function(e){
   currentDest = e.latlng;
   if(destMarker) destMarker.setLatLng(e.latlng);
   else destMarker = L.circleMarker(e.latlng,{radius:10,color:'#2e7d32',fillColor:'#2e7d32',fillOpacity:1}).addTo(map);
+  document.getElementById('compass').style.display='flex';
   showMsg('🎯 تم تحديد الهدف');
 });
 
-document.getElementById('destBtn').onclick=function(){ showMsg('👆 اضغط على الخريطة لتحديد الهدف'); };
+/* حفظ النقطة */
+document.getElementById('saveBtn').onclick=function(){
+  if(!currentDest){ showMsg('⚠️ حدد هدفاً أولاً على الخريطة'); return; }
+  document.getElementById('saveBox').style.display='block';
+  document.getElementById('spotName').focus();
+};
+function saveCurrentSpot(){
+  var name=document.getElementById('spotName').value.trim()||('نقطة '+(spots.length+1));
+  spots.push({name:name, lat:currentDest.lat, lng:currentDest.lng});
+  saveSpots();
+  document.getElementById('saveBox').style.display='none';
+  document.getElementById('spotName').value='';
+  showMsg('💾 تم حفظ: '+name);
+}
 
+/* قائمة النقاط + حذف */
 document.getElementById('spotsBtn').onclick=function(){
   var d=document.getElementById('spotsDiv'); d.innerHTML='';
   if(!spots.length) d.innerHTML='<p>لا توجد نقاط بعد</p>';
-  spots.forEach(function(s){
+  spots.forEach(function(s,i){
+    var row=document.createElement('div'); row.className='spotRow';
     var b=document.createElement('button');
     b.textContent='📌 '+s.name;
-    b.onclick=function(){ map.setView([s.lat,s.lng],14); document.getElementById('spotsList').style.display='none'; };
-    d.appendChild(b);
+    b.onclick=function(){ map.setView([s.lat,s.lng],14); currentDest={lat:s.lat,lng:s.lng};
+      if(destMarker) destMarker.setLatLng([s.lat,s.lng]); else destMarker=L.circleMarker([s.lat,s.lng],{radius:10,color:'#2e7d32',fillColor:'#2e7d32',fillOpacity:1}).addTo(map);
+      document.getElementById('compass').style.display='flex';
+      document.getElementById('overlay').style.display='none'; };
+    var del=document.createElement('button'); del.textContent='🗑️'; del.className='delBtn';
+    del.onclick=function(){ if(confirm('حذف "'+s.name+'"؟')){ spots.splice(i,1); saveSpots(); document.getElementById('spotsBtn').onclick(); } };
+    row.appendChild(b); row.appendChild(del); d.appendChild(row);
   });
-  document.getElementById('spotsList').style.display='block';
+  document.getElementById('overlay').style.display='block';
 };
 
+/* تصدير GPX */
+document.getElementById('gpxBtn').onclick=function(){
+  if(!spots.length){ showMsg('⚠️ لا توجد نقاط للتصدير'); return; }
+  var gpx='<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="GPS Sayyad">\n';
+  spots.forEach(function(s){ gpx+='<wpt lat="'+s.lat+'" lon="'+s.lng+'"><name>'+s.name+'</name></wpt>\n'; });
+  gpx+='</gpx>';
+  var blob=new Blob([gpx],{type:'application/gpx+xml'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='my_spots.gpx'; a.click();
+  showMsg('📤 تم تصدير الملف ✅');
+};
+
+/* المسار */
 var tracking=false, trackPoints=[], trackLine=null;
 document.getElementById('trackBtn').onclick=function(){
   tracking=!tracking;
@@ -95,26 +154,75 @@ document.getElementById('trackBtn').onclick=function(){
     var td=0;
     for(var i=1;i<trackPoints.length;i++)
       td+=dist({lat:trackPoints[i-1][0],lng:trackPoints[i-1][1]},{lat:trackPoints[i][0],lng:trackPoints[i][1]});
-    showMsg(' المسار: '+(td/1000).toFixed(2)+' km');
-    this.style.background='#8e24aa';
+    showMsg('📏 المسار: '+(td/1000).toFixed(2)+' km'); this.style.background='#8e24aa';
   }
 };
 
+/* شروق/غروب بسيط (تقديري) */
+function sunTimes(lat,lng){
+  var d=new Date(), day=Math.floor((d-new Date(d.getFullYear(),0,0))/864e5);
+  var decl=23.45*Math.sin(2*Math.PI*(284+day)/365*Math.PI/180);
+  var cosH=(Math.sin(-0.83*Math.PI/180)-Math.sin(lat*Math.PI/180)*Math.sin(decl*Math.PI/180))/(Math.cos(lat*Math.PI/180)*Math.cos(decl*Math.PI/180));
+  if(cosH>1||cosH<-1) return {rise:'--',set:'--'};
+  var H=Math.acos(cosH)*180/Math.PI/15;
+  var solarNoon=12-lng/15;
+  var f=function(h){ h=(h+24)%24; var hh=Math.floor(h), mm=Math.round((h-hh)*60); if(mm==60){mm=0;hh++;} return (hh<10?'0':'')+hh+':'+(mm<10?'0':'')+mm; };
+  return
+  return {rise:f(solarNoon-H), set:f(solarNoon+H)};
+}
+
+/* GPS */
+function fmtTime(s){ var h=Math.floor(s/3600), m=Math.floor(s%3600/60), sec=s%60;
+  return (h>0?h+':':'')+(m<10?'0':'')+m+':'+(sec<10?'0':'')+sec; }
+
 function onPos(pos){
   myPos = {lat:pos.coords.latitude, lng:pos.coords.longitude};
-  document.getElementById('topbar').textContent = '📍 '+myPos.lat.toFixed(5)+', '+myPos.lng.toFixed(5);
+  document.getElementById('topbar').textContent = '📍 '+myPos.lat.toFixed(5)+', '+myPos.lng.toFixed(5)
+    +' | 🧭 '+(pos.coords.heading!=null&&!isNaN(pos.coords.heading)?Math.round(pos.coords.heading)+'°':'--');
+
   if(!myMarker) myMarker = L.circleMarker([myPos.lat,myPos.lng],{radius:10,color:'#0277bd',fillColor:'#0277bd',fillOpacity:1}).addTo(map);
   else myMarker.setLatLng([myPos.lat,myPos.lng]);
+
+  /* السرعة */
+  var spd = pos.coords.speed!=null&&!isNaN(pos.coords.speed) ? pos.coords.speed*3.6 : 0;
+  document.getElementById('speed').textContent = '⚡ '+spd.toFixed(1)+' km/h';
+
+  /* المؤقت */
+  if(startTime){
+    document.getElementById('timer').textContent='⏱️ '+fmtTime(Math.floor((Date.now()-startTime)/1000));
+  }
+
+  /* شروق/غروب (مرة واحدة) */
+  if(!window._sunDone){ window._sunDone=true;
+    var st=sunTimes(myPos.lat,myPos.lng);
+    document.getElementById('sun').textContent='🌅 '+st.rise+' | 🌇 '+st.set;
+  }
+
+  /* المسار */
   if(tracking) trackPoints.push([myPos.lat,myPos.lng]);
   if(trackLine) map.removeLayer(trackLine);
   if(trackPoints.length>1) trackLine = L.polyline(trackPoints,{color:'#8e24aa'}).addTo(map);
+
+  /* المسافة + البوصلة */
   if(currentDest){
-    var d = dist(myPos,currentDest);
-    document.getElementById('dist').textContent = '🎯 المسافة: '+(d>1000?(d/1000).toFixed(2)+' km':Math.round(d)+' m');
-  } else document.getElementById('dist').textContent = '--';
+    var d = dist(myPos,currentDest), b = bearing(myPos,currentDest);
+    document.getElementById('dist').textContent = '🎯 '+(d>1000?(d/1000).toFixed(2)+' km':Math.round(d)+' m');
+    document.getElementById('compArrow').textContent='⬆️';
+    document.getElementById('compArrow').style.transform='rotate('+b+'deg)';
+    var heading = pos.coords.heading!=null&&!isNaN(pos.coords.heading)?pos.coords.heading:0;
+    var rel=(b-heading+360)%360;
+    document.getElementById('compDeg').textContent=Math.round(d>1000?d/1000:d>0?(d/1000).toFixed(1):0)+' '+(d>1000?'km':'m')+' '+dirName(rel);
+  } else document.getElementById('dist').textContent = '🎯 --';
 }
 function gpsError(){ document.getElementById('topbar').textContent='⚠️ جاري تحديد الموقع...'; }
 navigator.geolocation.watchPosition(onPos,gpsError,{enableHighAccuracy:true,maximumAge:2000});
+
+/* مؤقّت مستقل كل ثانية */
+document.getElementById('trackBtn').addEventListener('click', function(){
+  if(tracking && !startTime){ startTime=Date.now(); timerInt=setInterval(function(){
+    document.getElementById('timer').textContent='⏱️ '+fmtTime(Math.floor((Date.now()-startTime)/1000)); },1000); }
+  else if(!tracking && startTime){ startTime=null; clearInterval(timerInt); document.getElementById('timer').textContent='⏱️ 00:00'; }
+});
 </script>
 </body>
 </html>
