@@ -3,40 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Redline Fishing</title>
 
-    <link
-        rel="stylesheet"
-        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 
     <style>
         :root {
             --primary: #087ea4;
             --dark: #071923;
             --light: #f4f8fa;
-            --danger: #c62828;
         }
 
-        * {
-            box-sizing: border-box;
-        }
+        * { box-sizing: border-box; }
 
-        body {
+        html, body {
             margin: 0;
-            min-height: 100vh;
+            height: 100%;
             font-family: Arial, Tahoma, sans-serif;
             background: var(--light);
             color: #17232b;
         }
 
-        button,
-        input {
-            font: inherit;
-        }
-
         button {
+            font: inherit;
             border: 0;
             border-radius: 8px;
             padding: 12px 18px;
@@ -46,23 +35,11 @@
             margin: 5px;
         }
 
-        button:hover {
-            opacity: 0.9;
-        }
+        button:hover { opacity: 0.9; }
 
         button:disabled {
             opacity: 0.6;
             cursor: not-allowed;
-        }
-
-        input {
-            width: min(90%, 360px);
-            padding: 12px;
-            margin: 6px 0;
-            border: 1px solid #ccd7dc;
-            border-radius: 8px;
-            background: white;
-            direction: rtl;
         }
 
         /* شاشة البداية */
@@ -71,15 +48,12 @@
             inset: 0;
             z-index: 9999;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
+            gap: 15px;
             background: var(--dark);
-            opacity: 1;
-            visibility: visible;
-            pointer-events: none;
-            transition:
-                opacity 0.7s ease,
-                visibility 0.7s ease;
+            transition: opacity 0.7s ease, visibility 0.7s ease;
         }
 
         #splash-screen.hide {
@@ -90,84 +64,67 @@
 
         #splash-screen img {
             width: min(78vw, 380px);
-            max-height: 70vh;
+            max-height: 60vh;
             object-fit: contain;
-            animation: logoAppear 1.2s ease;
+            animation: appear 1.2s ease;
         }
 
-        @keyframes logoAppear {
-            from {
-                opacity: 0;
-                transform: scale(0.8);
-            }
+        .splash-title {
+            color: white;
+            font-size: 30px;
+            font-weight: bold;
+            animation: appear 1.2s ease;
+        }
 
-            to {
-                opacity: 1;
-                transform: scale(1);
-            }
+        .splash-title span { color: var(--primary); }
+
+        @keyframes appear {
+            from { opacity: 0; transform: scale(0.85); }
+            to   { opacity: 1; transform: scale(1); }
         }
 
         /* التطبيق */
         #app-screen {
             display: none;
-            min-height: 100vh;
+            height: 100vh;
             flex-direction: column;
-            background: var(--light);
         }
 
         .top-bar {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 10px;
+            justify-content: center;
             padding: 10px 14px;
             color: white;
             background: var(--dark);
-        }
-
-        .top-bar strong {
             font-size: 18px;
+            font-weight: bold;
         }
 
         #map {
+            flex: 1;
             width: 100%;
-            height: 58vh;
-            min-height: 350px;
+            min-height: 300px;
         }
 
         .controls {
-            padding: 12px;
+            padding: 10px;
             text-align: center;
             background: white;
         }
 
         #weather-result {
             max-width: 600px;
-            margin: 10px auto 0;
-            padding: 12px;
+            margin: 8px auto 4px;
+            padding: 10px;
             border-radius: 10px;
             background: #eef7fa;
             line-height: 1.8;
         }
 
-        .status-good {
-            color: #16803c;
-            font-weight: bold;
-        }
-
-        .status-medium {
-            color: #bd7500;
-            font-weight: bold;
-        }
-
-        .status-bad {
-            color: #c62828;
-            font-weight: bold;
-        }
-
-        .hidden {
-            display: none !important;
-        }
+        .status-good   { color: #16803c; font-weight: bold; }
+        .status-medium { color: #bd7500; font-weight: bold; }
+        .status-bad    { color: #c62828; font-weight: bold; }
     </style>
 </head>
 
@@ -175,28 +132,23 @@
 
     <!-- شاشة الشعار -->
     <div id="splash-screen">
-        <img
-            src="1789584118704.jpg"
-            alt="شعار Redline Fishing"
-        >
+        <img src="1789584118704.jpg" alt="شعار Redline Fishing"
+             onerror="this.style.display='none';
+             document.getElementById('splash-title').style.display='block';">
+        <div class="splash-title" id="splash-title" style="display:none;">
+            Redline <span>Fishing</span> 🎣
+        </div>
     </div>
 
     <!-- شاشة التطبيق -->
     <section id="app-screen">
-        <div class="top-bar">
-            <strong>Redline Fishing</strong>
-        </div>
+        <div class="top-bar">Redline Fishing</div>
 
         <div id="map"></div>
 
         <div class="controls">
-            <button id="locate-button" type="button">
-                تحديد موقعي
-            </button>
-
-            <button id="weather-button" type="button">
-                جلب حالة البحر والطقس
-            </button>
+            <button id="locate-button" type="button">تحديد موقعي</button>
+            <button id="weather-button" type="button">جلب حالة البحر والطقس</button>
 
             <div id="weather-result">
                 اضغط على زر جلب حالة البحر والطقس.
@@ -209,58 +161,35 @@
     <script>
         const splashScreen = document.getElementById("splash-screen");
         const appScreen = document.getElementById("app-screen");
-
         const locateButton = document.getElementById("locate-button");
         const weatherButton = document.getElementById("weather-button");
         const weatherResult = document.getElementById("weather-result");
-
-        const WEATHER_DEFAULT_TEXT =
-            "اضغط على زر جلب حالة البحر والطقس.";
 
         let map = null;
         let userMarker = null;
         let currentLatitude = 36.8;
         let currentLongitude = 10.6;
 
-        /*
-         * عرض الشعار لمدة 2.2 ثانية ثم فتح التطبيق مباشرة
-         */
+        /* فتح التطبيق بعد الشعار */
         window.addEventListener("load", () => {
             setTimeout(() => {
                 splashScreen.classList.add("hide");
-
                 appScreen.style.display = "flex";
-
                 initializeMap();
-
-                setTimeout(() => {
-                    if (map) {
-                        map.invalidateSize();
-                    }
-                }, 250);
+                setTimeout(() => map && map.invalidateSize(), 250);
             }, 2200);
         });
 
-        /*
-         * تهيئة الخريطة
-         */
+        /* تهيئة الخريطة */
         function initializeMap() {
-            if (map) {
-                return;
-            }
+            if (map) return;
 
-            map = L.map("map").setView(
-                [currentLatitude, currentLongitude],
-                10
-            );
+            map = L.map("map").setView([currentLatitude, currentLongitude], 10);
 
-            L.tileLayer(
-                "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
-                {
-                    maxZoom: 19,
-                    attribution: "&copy; OpenStreetMap contributors"
-                }
-            ).addTo(map);
+            L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+                maxZoom: 19,
+                attribution: "&copy; OpenStreetMap contributors"
+            }).addTo(map);
 
             userMarker = createUserMarker(
                 [currentLatitude, currentLongitude],
@@ -268,9 +197,7 @@
             );
         }
 
-        /*
-         * إنشاء ماركر مع أيقونة الكاياك وخيار بديل عند فشل تحميل الصورة
-         */
+        /* ماركر الكاياك مع أيقونة بديلة عند فشل الصورة */
         function createUserMarker(position, popupText) {
             const kayakIcon = L.icon({
                 iconUrl: "images/kayak-icon.png",
@@ -283,11 +210,10 @@
                 .addTo(map)
                 .bindPopup(popupText);
 
-            const iconElement =
-                marker.getElement()?.querySelector("img");
+            const img = marker.getElement()?.querySelector("img");
 
-            if (iconElement) {
-                iconElement.addEventListener("error", () => {
+            if (img) {
+                img.addEventListener("error", () => {
                     marker.setIcon(new L.Icon.Default());
                 }, { once: true });
             }
@@ -295,9 +221,7 @@
             return marker;
         }
 
-        /*
-         * تحديد موقع المستخدم
-         */
+        /* تحديد موقع المستخدم */
         locateButton.addEventListener("click", () => {
             if (!navigator.geolocation) {
                 alert("المتصفح لا يدعم تحديد الموقع.");
@@ -312,50 +236,30 @@
                     currentLatitude = position.coords.latitude;
                     currentLongitude = position.coords.longitude;
 
-                    const positionArray = [
-                        currentLatitude,
-                        currentLongitude
-                    ];
+                    const pos = [currentLatitude, currentLongitude];
 
-                    if (map) {
-                        map.setView(positionArray, 13);
+                    map.setView(pos, 13);
 
-                        if (userMarker) {
-                            map.removeLayer(userMarker);
-                        }
+                    if (userMarker) map.removeLayer(userMarker);
 
-                        userMarker = createUserMarker(
-                            positionArray,
-                            "موقعك الحالي 🎣"
-                        );
-                    }
+                    userMarker = createUserMarker(pos, "موقعك الحالي 🎣");
 
                     locateButton.disabled = false;
                     locateButton.textContent = "تحديد موقعي";
                 },
                 () => {
-                    alert(
-                        "تعذر تحديد موقعك. تأكد من تفعيل خدمة الموقع."
-                    );
-
+                    alert("تعذر تحديد موقعك. تأكد من تفعيل خدمة الموقع.");
                     locateButton.disabled = false;
                     locateButton.textContent = "تحديد موقعي";
                 },
-                {
-                    enableHighAccuracy: true,
-                    timeout: 10000,
-                    maximumAge: 0
-                }
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
         });
 
-        /*
-         * جلب حالة البحر والطقس
-         */
+        /* جلب حالة البحر والطقس */
         weatherButton.addEventListener("click", async () => {
             weatherButton.disabled = true;
             weatherButton.textContent = "جارٍ جلب البيانات...";
-
             weatherResult.textContent = "جارٍ جلب البيانات، انتظر قليلاً...";
 
             try {
@@ -366,8 +270,7 @@
                     "?lat=" + currentLatitude +
                     "&lon=" + currentLongitude +
                     "&appid=" + apiKey +
-                    "&units=metric" +
-                    "&lang=ar"
+                    "&units=metric&lang=ar"
                 );
 
                 if (!response.ok) {
@@ -380,11 +283,8 @@
                 const windSpeed = data.wind.speed;
                 const description = data.weather[0].description;
 
-                /*
-                 * تقييم حالة البحر حسب سرعة الرياح (متر/ثانية)
-                 */
-                let seaStatusText = "";
-                let seaStatusClass = "";
+                /* تقييم حالة البحر حسب سرعة الرياح */
+                let seaStatusText, seaStatusClass;
 
                 if (windSpeed < 5) {
                     seaStatusText = "ممتازة ✅";
@@ -400,31 +300,20 @@
                 weatherResult.innerHTML =
                     "📍 <strong>الموقع:</strong> " +
                     currentLatitude.toFixed(3) + ", " +
-                    currentLongitude.toFixed(3) +
-                    "<br>" +
-                    "🌡️ <strong>الطقس:</strong> " +
-                    description +
-                    "<br>" +
-                    "🌡️ <strong>الحرارة:</strong> " +
-                    temperature + "°C" +
-                    "<br>" +
+                    currentLongitude.toFixed(3) + "<br>" +
+                    "🌡️ <strong>الطقس:</strong> " + description + "<br>" +
+                    "🌡️ <strong>الحرارة:</strong> " + temperature + "°C<br>" +
                     "💨 <strong>سرعة الرياح:</strong> " +
-                    windSpeed.toFixed(1) + " م/ث" +
-                    "<br>" +
+                    windSpeed.toFixed(1) + " م/ث<br>" +
                     "🌊 <strong>حالة البحر للكاياك:</strong> " +
                     '<span class="' + seaStatusClass + '">' +
-                    seaStatusText +
-                    "</span>";
+                    seaStatusText + "</span>";
 
                 if (windSpeed >= 8) {
-                    alert(
-                        "⚠️ تحذير: حالة البحر خطيرة حالياً. " +
-                        "يُنصح بعدم الخروج بالكاياك."
-                    );
+                    alert("⚠️ تحذير: حالة البحر خطيرة حالياً. يُنصح بعدم الخروج بالكاياك.");
                 }
             } catch (error) {
-                weatherResult.textContent =
-                    "تعذر جلب بيانات الطقس. حاول مرة أخرى.";
+                weatherResult.textContent = "تعذر جلب بيانات الطقس. حاول مرة أخرى.";
             } finally {
                 weatherButton.disabled = false;
                 weatherButton.textContent = "جلب حالة البحر والطقس";
