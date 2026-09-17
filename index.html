@@ -3,45 +3,108 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>التطبيق البحري</title>
+<title>⚓ الملاح البحري</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
 <style>
-  html, body { margin:0; padding:0; height:100%; font-family:sans-serif; background:#263238; }
-  #mapWrap { position:relative; width:100%; height:calc(100vh - 200px); min-height:300px; }
-  #map { width:100%; height:100%; background:#90a4ae; }
-
-  #layerBar { position:absolute; top:10px; left:10px; z-index:1000; display:flex; flex-direction:column; gap:5px; }
-  #layerBar button, #btnSeaInfo {
-    background:#263238; color:#fff; border:none; padding:8px 12px;
-    border-radius:8px; cursor:pointer; font-size:14px; box-shadow:0 2px 5px rgba(0,0,0,.4);
+  :root {
+    --bg:#0a1628; --panel:rgba(13,27,42,.85); --accent:#00d4ff;
+    --accent2:#ff6b35; --text:#e8f1f8; --muted:#7a93a8; --green:#00e676; --red:#ff5252;
   }
-  #layerBar button.active { background:#0288d1; }
-  #btnSeaInfo { position:absolute; top:125px; left:10px; z-index:1000; background:#0288d1; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; height:100%; font-family:'Cairo',sans-serif; background:var(--bg); color:var(--text); }
+
+  #mapWrap { position:relative; width:100%; height:calc(100vh - 175px); min-height:300px; }
+  #map { width:100%; height:100%; background:#0d1b2a; }
+
+  /* ====== شريط علوي زجاجي ====== */
+  #topBar {
+    position:absolute; top:12px; right:12px; left:12px; z-index:1000;
+    display:flex; justify-content:space-between; align-items:center; pointer-events:none;
+  }
+  #layerBar { display:flex; gap:6px; pointer-events:auto; }
+  .glass {
+    background:var(--panel); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+    border:1px solid rgba(0,212,255,.15); border-radius:14px;
+    box-shadow:0 4px 20px rgba(0,0,0,.45);
+  }
+  #layerBar button {
+    background:transparent; color:var(--muted); border:none; padding:8px 12px;
+    cursor:pointer; font-family:inherit; font-size:13px; font-weight:600; border-radius:10px;
+    transition:all .25s;
+  }
+  #layerBar button.active { background:var(--accent); color:#04121f; }
+
+  #btnSeaInfo {
+    pointer-events:auto; background:var(--panel); backdrop-filter:blur(12px);
+    border:1px solid rgba(255,107,53,.3); color:var(--accent2);
+    padding:8px 14px; border-radius:14px; cursor:pointer;
+    font-family:inherit; font-size:14px; font-weight:700;
+    box-shadow:0 4px 20px rgba(0,0,0,.45); transition:all .25s;
+  }
+  #btnSeaInfo:active { transform:scale(.94); }
 
   #clearDest {
-    position:absolute; top:10px; right:10px; z-index:1000;
-    background:#c62828; color:#fff; border:none; padding:8px 12px;
-    border-radius:8px; cursor:pointer; display:none;
+    position:absolute; bottom:20px; left:12px; z-index:1000; display:none;
+    background:rgba(255,82,82,.92); color:#fff; border:none; padding:10px 16px;
+    border-radius:14px; cursor:pointer; font-family:inherit; font-weight:700; font-size:14px;
+    box-shadow:0 4px 15px rgba(255,82,82,.4);
   }
 
-  .panel { background:#263238; color:#fff; padding:8px; margin-top:5px; border-radius:10px; text-align:center; }
-  #infoBar { display:flex; justify-content:space-around; }
-  #infoBar b, #seaRow b { font-size:1.1em; }
-  #speedBox { cursor:pointer; }
+  /* ====== شريط المعلومات السفلي ====== */
+  #infoBar {
+    position:fixed; bottom:0; right:0; left:0; z-index:1100;
+    display:flex; justify-content:space-around; align-items:center;
+    padding:10px 8px 14px; border-radius:22px 22px 0 0;
+    background:var(--panel); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    border-top:1px solid rgba(0,212,255,.2);
+  }
+  .stat { text-align:center; flex:1; cursor:default; transition:transform .2s; }
+  .stat:active { transform:scale(.92); }
+  .stat .label { font-size:10px; color:var(--muted); font-weight:600; letter-spacing:.5px; }
+  .stat .value { font-size:18px; font-weight:900; color:var(--accent); line-height:1.3; }
+  .stat .unit { font-size:10px; color:var(--muted); font-weight:600; }
+  #speedBox .value { color:var(--green); }
+  .divider { width:1px; height:32px; background:rgba(122,147,168,.25); }
 
-  #seaCard { display:none; }
-  #seaCard h3 { margin:0 0 6px; font-size:15px; color:#4fc3f7; }
-  #seaRow { display:flex; justify-content:space-around; }
-  #seaRow b { display:block; }
-  #seaRow span { font-size:12px; color:#b0bec5; }
-  #seaState { margin-top:6px; font-size:14px; }
+  /* ====== بطاقة البحر ====== */
+  #seaCard {
+    position:absolute; top:70px; right:12px; left:12px; z-index:1000; display:none;
+    padding:14px; border-radius:18px;
+    background:var(--panel); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    border:1px solid rgba(0,212,255,.2); box-shadow:0 8px 30px rgba(0,0,0,.5);
+    animation:slideDown .3s ease;
+  }
+  @keyframes slideDown { from{opacity:0; transform:translateY(-12px)} to{opacity:1; transform:none} }
+  #seaCard h3 { margin:0 0 10px; font-size:15px; color:var(--accent); display:flex; align-items:center; gap:8px; }
+  #seaRow { display:flex; justify-content:space-around; text-align:center; }
+  #seaRow b { display:block; font-size:20px; font-weight:900; color:var(--text); }
+  #seaRow span { font-size:11px; color:var(--muted); }
+  #seaState {
+    margin-top:12px; padding:8px; border-radius:10px; text-align:center;
+    font-size:13px; font-weight:700; background:rgba(0,212,255,.08);
+  }
 
+  /* ====== سهم القارب ====== */
   .boat-arrow {
     width:0; height:0;
-    border-left:12px solid transparent;
-    border-right:12px solid transparent;
-    border-bottom:26px solid #ff5722;
-    filter: drop-shadow(0 0 3px rgba(0,0,0,.6));
+    border-left:11px solid transparent; border-right:11px solid transparent;
+    border-bottom:26px solid var(--accent2);
+    filter:drop-shadow(0 0 6px rgba(255,107,53,.7));
+  }
+
+  /* ====== شعار ====== */
+  #logo {
+    position:absolute; top:-2px; left:50%; transform:translateX(-50%); z-index:999;
+    pointer-events:none; font-weight:900; font-size:15px; color:var(--accent);
+    text-shadow:0 2px 8px rgba(0,0,0,.8);
+  }
+
+  /* شريط تنبيه GPS */
+  #gpsStatus {
+    position:absolute; bottom:14px; right:12px; z-index:1000;
+    padding:6px 12px; border-radius:20px; font-size:11px; font-weight:700;
+    background:rgba(255,82,82,.9); display:none;
   }
 </style>
 </head>
@@ -49,30 +112,39 @@
 
 <div id="mapWrap">
   <div id="map"></div>
-  <div id="layerBar">
-    <button id="btnSat" class="active">🛰️ قمر صناعي</button>
-    <button id="btnStreet">🗺️ عادية</button>
-    <button id="btnDepth">📊 الأعماق</button>
+  <div id="logo">⚓ الملاح البحري</div>
+
+  <div id="topBar">
+    <div id="layerBar" class="glass">
+      <button id="btnSat" class="active">🛰️ قمر</button>
+      <button id="btnStreet">🗺️ خريطة</button>
+      <button id="btnDepth">📊 أعماق</button>
+    </div>
+    <button id="btnSeaInfo">🌊 حالة البحر</button>
   </div>
-  <button id="btnSeaInfo">🌊 حالة البحر</button>
+
+  <div id="seaCard">
+    <h3>🌊 حالة البحر الآن</h3>
+    <div id="seaRow">
+      <div><b id="waveHeight">--</b><span>الموج (م)</span></div>
+      <div><b id="waveDir">--</b><span>اتجاه الموج</span></div>
+      <div><b id="wavePeriod">--</b><span>الفترة (ث)</span></div>
+    </div>
+    <div id="seaState">--</div>
+  </div>
+
   <button id="clearDest">✖ إلغاء الوجهة</button>
+  <div id="gpsStatus">📡 لا توجد إشارة GPS</div>
 </div>
 
-<div id="infoBar" class="panel">
-  <div id="speedBox">⚡<br><b id="speed">0.0</b> <span id="speedUnit">كم/س</span></div>
-  <div>🧭<br><b id="bearing">--°</b></div>
-  <div>📏<br><b id="distance">--</b></div>
-  <div>⏱️<br><b id="time">--:--</b></div>
-</div>
-
-<div id="seaCard" class="panel">
-  <h3>🌊 حالة البحر</h3>
-  <div id="seaRow">
-    <div><b id="waveHeight">--</b><span>الموج (م)</span></div>
-    <div><b id="waveDir">--</b><span>اتجاه الموج</span></div>
-    <div><b id="wavePeriod">--</b><span>الفترة (ث)</span></div>
-  </div>
-  <div id="seaState">--</div>
+<div id="infoBar">
+  <div class="stat" id="speedBox"><div class="label">السرعة</div><div class="value" id="speed">0.0</div><div class="unit" id="speedUnit">كم/س</div></div>
+  <div class="divider"></div>
+  <div class="stat"><div class="label">الاتجاه</div><div class="value" id="bearing">--°</div><div class="unit">درجة</div></div>
+  <div class="divider"></div>
+  <div class="stat"><div class="label">المسافة</div><div class="value" id="distance">--</div><div class="unit">للوجهة</div></div>
+  <div class="divider"></div>
+  <div class="stat"><div class="label">الوقت</div><div class="value" id="time">--:--</div><div class="unit">الوصول</div></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -90,16 +162,15 @@
   satLayer.addTo(map);
   seamarkLayer.addTo(map);
 
+  var depthOn = false;
+  var depthLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {maxZoom:18});
+
   function switchLayer(show, hide, btn){
     map.removeLayer(hide); show.addTo(map); seamarkLayer.addTo(map);
     if (depthOn) depthLayer.addTo(map);
     document.querySelectorAll('#layerBar button').forEach(function(b){ b.classList.remove('active'); });
     btn.classList.add('active');
   }
-
-  var depthOn = false;
-  var depthLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {maxZoom:18});
-
   document.getElementById('btnSat').onclick = function(){ switchLayer(satLayer, streetLayer, this); };
   document.getElementById('btnStreet').onclick = function(){ switchLayer(streetLayer, satLayer, this); };
   document.getElementById('btnDepth').onclick = function(){
@@ -111,6 +182,7 @@
   /* ================= الحالة ================= */
   var userMarker=null, destMarker=null, routeLine=null;
   var destination=null, userPos=null, lastSpeed=0, prevPos=null;
+  var gpsStatus = document.getElementById('gpsStatus');
 
   try {
     var saved = localStorage.getItem('dest');
@@ -137,7 +209,9 @@
   function updateRoute(){
     if (!userPos || !destination) return;
     if (routeLine) routeLine.setLatLngs([userPos, destination]);
-    else routeLine = L.polyline([userPos, destination], {color:'#0288d1', weight:4, dashArray:'8,8'}).addTo(map);
+    else routeLine = L.polyline([userPos, destination], {color:'#00d4ff', weight:4, dashArray:'10،10'});
+    routeLine.addTo(map);
+    }
 
     var d = haversine(userPos.lat, userPos.lng, destination.lat, destination.lng);
     document.getElementById('distance').textContent = d>=1000 ? (d/1000).toFixed(2)+' كم' : d.toFixed(0)+' م';
@@ -153,7 +227,7 @@
   function setDestination(ll){
     destination = ll;
     if (destMarker) destMarker.setLatLng(ll);
-    else destMarker = L.marker(ll, {icon: L.divIcon({html:'<div style="font-size:32px;">🏁</div>', iconSize:[32,32], iconAnchor:[16,32], className:''})}).addTo(map);
+    else destMarker = L.marker(ll, {icon: L.divIcon({html:'<div style="font-size:32px; filter:drop-shadow(0 2px 4px rgba(0,0,0,.6));">🏁</div>', iconSize:[32,32], iconAnchor:[16,32], className:''})}).addTo(map);
     document.getElementById('clearDest').style.display = 'block';
     updateRoute();
   }
@@ -189,6 +263,7 @@
   /* ================= GPS ================= */
   if (navigator.geolocation){
     navigator.geolocation.watchPosition(function(pos){
+      gpsStatus.style.display = 'none';
       userPos = L.latLng(pos.coords.latitude, pos.coords.longitude);
       var s = pos.coords.speed;
       lastSpeed = (s!==null && s>=0) ? s : 0;
@@ -210,33 +285,40 @@
       showSpeed();
       updateRoute();
       if (!map.getBounds().pad(0.2).contains(userPos)) map.panTo(userPos);
-    }, function(err){ console.log('GPS: '+err.message); },
+    }, function(err){
+      gpsStatus.style.display = 'block';
+    },
     { enableHighAccuracy:true, maximumAge:2000, timeout:15000 });
+  } else {
+    gpsStatus.style.display = 'block';
   }
 
   /* ================= حالة البحر ================= */
   function douglas(h){
-    if (h < 0.1)  return '🔴 بحر ميت';
-    if (h < 0.5)  return '🟢 هادئ — موج خفيف';
+    if (h < 0.1)  return '🔴 بحر ميت — لا يوجد موج تقريباً';
+    if (h < 0.5)  return '🟢 هادئ — مثالي للصيد والقوارب الصغيرة';
     if (h < 1.25) return '🟢 خف — مناسب للقوارب الصغيرة';
-    if (h < 2.5)  return '🟡 متوسط — حذر';
+    if (h < 2.5)  return '🟡 متوسط — حذر مع القوارب الصغيرة';
     if (h < 4)    return '🟠 عالٍ — خطير على القوارب الصغيرة';
     return '🔴 عالٍ جداً — خطر على جميع القوارب';
   }
 
   function getSeaState(lat, lng){
-    document.getElementById('seaState').textContent = 'جاري التحميل...';
+    document.getElementById('seaState').textContent = '⏳ جاري التحميل...';
     fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+lat+'&longitude='+lng+'&current=wave_height,wave_direction,wave_period')
       .then(function(r){ return r.json(); })
       .then(function(data){
         var c = data.current;
-        if (!c || c.wave_height === null){
-          document.getElementById('seaState').textContent = '⚠️ لا توجد بيانات لهذه المنطقة';
+        if (!c || c.wave_height === null || c.wave_height === undefined){
+          document.getElementById('seaState').textContent = '⚠️ لا توجد بيانات بحرية لهذه المنطقة';
+          document.getElementById('waveHeight').textContent='--';
+          document.getElementById('waveDir').textContent='--';
+          document.getElementById('wavePeriod').textContent='--';
           return;
         }
         document.getElementById('waveHeight').textContent = c.wave_height.toFixed(2);
         document.getElementById('waveDir').textContent = dirName(c.wave_direction);
-        document.getElementById('wavePeriod').textContent = c.wave_period !== null ? c.wave_period.toFixed(0)        : '--';
+        document.getElementById('wavePeriod').textContent = c.wave_period !== null ? c.wave_period.toFixed(0) : '--';
         document.getElementById('seaState').textContent = douglas(c.wave_height);
       })
       .catch(function(){
@@ -252,7 +334,7 @@
     getSeaState(loc.lat, loc.lng);
   };
 
-  /* ================= إصلاح الخريطة البيضاء ================= */
+  /* ================= إصلاح الخريطة ================= */
   map.invalidateSize();
   setTimeout(function(){ map.invalidateSize(); }, 500);
   setTimeout(function(){ map.invalidateSize(); }, 1500);
