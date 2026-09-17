@@ -1,91 +1,772 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
     <title>Redline Fishing</title>
-    <!-- تضمين Leaflet و Firebase -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+
+    <link
+        rel="stylesheet"
+        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    />
+
     <style>
-        body { margin: 0; font-family: sans-serif; height: 100vh; }
-        #splash-screen, #auth-screen, #app-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; background: white; z-index: 1000; }
-        #app-screen { display: none; }
-        #map { width: 100%; height: 60vh; }
-        .hidden { display: none !important; }
+        :root {
+            --primary: #087ea4;
+            --dark: #071923;
+            --light: #f4f8fa;
+            --danger: #c62828;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: Arial, Tahoma, sans-serif;
+            background: var(--light);
+            color: #17232b;
+        }
+
+        button,
+        input {
+            font: inherit;
+        }
+
+        button {
+            border: 0;
+            border-radius: 8px;
+            padding: 12px 18px;
+            cursor: pointer;
+            color: white;
+            background: var(--primary);
+            margin: 5px;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        input {
+            width: min(90%, 360px);
+            padding: 12px;
+            margin: 6px 0;
+            border: 1px solid #ccd7dc;
+            border-radius: 8px;
+            background: white;
+            direction: rtl;
+        }
+
+        /* شاشة البداية */
+        #splash-screen {
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--dark);
+            opacity: 1;
+            visibility: visible;
+            transition:
+                opacity 0.7s ease,
+                visibility 0.7s ease;
+        }
+
+        #splash-screen.hide {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+        #splash-screen img {
+            width: min(78vw, 380px);
+            max-height: 70vh;
+            object-fit: contain;
+            animation: logoAppear 1.2s ease;
+        }
+
+        @keyframes logoAppear {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        /* شاشة الدخول */
+        #auth-screen {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .auth-card {
+            width: min(92vw, 420px);
+            padding: 28px 20px;
+            text-align: center;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+
+        .auth-logo {
+            width: min(70vw, 250px);
+            max-height: 150px;
+            object-fit: contain;
+            margin-bottom: 15px;
+        }
+
+        .auth-card h2 {
+            margin-top: 5px;
+            color: var(--dark);
+        }
+
+        #auth-message {
+            min-height: 24px;
+            margin-top: 10px;
+            color: var(--danger);
+            font-size: 14px;
+        }
+
+        /* التطبيق */
+        #app-screen {
+            display: none;
+            min-height: 100vh;
+            flex-direction: column;
+            background: var(--light);
+        }
+
+        .top-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 10px 14px;
+            color: white;
+            background: var(--dark);
+        }
+
+        .top-bar strong {
+            font-size: 18px;
+        }
+
+        .top-bar button {
+            margin: 0;
+            padding: 8px 12px;
+            background: var(--danger);
+        }
+
+        #map {
+            width: 100%;
+            height: 58vh;
+            min-height: 350px;
+        }
+
+        .controls {
+            padding: 12px;
+            text-align: center;
+            background: white;
+        }
+
+        #weather-result {
+            max-width: 600px;
+            margin: 10px auto 0;
+            padding: 12px;
+            border-radius: 10px;
+            background: #eef7fa;
+            line-height: 1.8;
+        }
+
+        .status-good {
+            color: #16803c;
+            font-weight: bold;
+        }
+
+        .status-medium {
+            color: #bd7500;
+            font-weight: bold;
+        }
+
+        .status-bad {
+            color: #c62828;
+            font-weight: bold;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
     </style>
 </head>
+
 <body>
 
-    <!-- 1. شاشة الترحيب -->
-    <div id="splash-screen"><img src="logo.png" alt="Logo"></div>
-
-    <!-- 2. شاشة الدخول -->
-    <div id="auth-screen" class="hidden">
-        <h2>تسجيل الدخول</h2>
-        <input type="email" id="email" placeholder="البريد الإلكتروني">
-        <input type="password" id="password" placeholder="كلمة السر">
-        <button onclick="login()">دخول</button>
+    <!-- شاشة الشعار -->
+    <div id="splash-screen">
+        <img
+            src="1789584118704.jpg"
+            alt="شعار Redline Fishing"
+        >
     </div>
 
-    <!-- 3. شاشة التطبيق الرئيسية -->
-    <div id="app-screen" class="hidden">
+    <!-- شاشة تسجيل الدخول -->
+    <section id="auth-screen" class="hidden">
+        <div class="auth-card">
+            <img
+                class="auth-logo"
+                src="1789584118704.jpg"
+                alt="Redline Fishing"
+            >
+
+            <h2>تسجيل الدخول</h2>
+
+            <input
+                type="email"
+                id="email"
+                placeholder="البريد الإلكتروني"
+                autocomplete="email"
+            >
+
+            <input
+                type="password"
+                id="password"
+                placeholder="كلمة السر"
+                autocomplete="current-password"
+            >
+
+            <div>
+                <button id="login-button" type="button">
+                    دخول
+                </button>
+
+                <button id="register-button" type="button">
+                    إنشاء حساب
+                </button>
+            </div>
+
+            <div id="auth-message"></div>
+        </div>
+    </section>
+
+    <!-- شاشة التطبيق -->
+    <section id="app-screen">
+        <div class="top-bar">
+            <strong>Redline Fishing</strong>
+            <button id="logout-button" type="button">تسجيل الخروج</button>
+        </div>
+
         <div id="map"></div>
-        <button onclick="getWeather()">جلب حالة الطقس</button>
-        <button onclick="logout()">خروج</button>
-    </div>
 
-    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+        <div class="controls">
+            <button id="locate-button" type="button">
+                تحديد موقعي
+            </button>
+
+            <button id="weather-button" type="button">
+                جلب حالة البحر والطقس
+            </button>
+
+            <div id="weather-result">
+                اضغط على زر جلب حالة البحر والطقس.
+            </div>
+        </div>
+    </section>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <script type="module">
-        // استيراد Firebase (يحتاج إعداد)
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/9.0.0/firebase-auth.js";
+        import {
+            initializeApp
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 
-        const firebaseConfig = { /* ضع بيانات مشروعك هنا */ };
-        initializeApp(firebaseConfig);
-        const auth = getAuth();
+        import {
+            getAuth,
+            onAuthStateChanged,
+            signInWithEmailAndPassword,
+            createUserWithEmailAndPassword,
+            signOut
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
-        // منطق التبديل بين الشاشات
-        setTimeout(() => { document.getElementById('splash-screen').classList.add('hidden'); }, 2200);
+        /*
+         * مهم:
+         * استبدل القيم التالية ببيانات مشروعك من Firebase.
+         * تجدها من:
+         * Firebase Console > Project settings > Your apps
+         */
+        const firebaseConfig = {
+            apiKey: "ضع_API_KEY_هنا",
+            authDomain: "ضع_AUTH_DOMAIN_هنا",
+            projectId: "ضع_PROJECT_ID_هنا",
+            storageBucket: "ضع_STORAGE_BUCKET_هنا",
+            messagingSenderId: "ضع_MESSAGING_SENDER_ID_هنا",
+            appId: "ضع_APP_ID_هنا"
+        };
 
+        const firebaseApp = initializeApp(firebaseConfig);
+        const auth = getAuth(firebaseApp);
+
+        const splashScreen = document.getElementById("splash-screen");
+        const authScreen = document.getElementById("auth-screen");
+        const appScreen = document.getElementById("app-screen");
+        const authMessage = document.getElementById("auth-message");
+
+        const emailInput = document.getElementById("email");
+        const passwordInput = document.getElementById("password");
+        const loginButton = document.getElementById("login-button");
+        const registerButton = document.getElementById("register-button");
+        const logoutButton = document.getElementById("logout-button");
+        const locateButton = document.getElementById("locate-button");
+        const weatherButton = document.getElementById("weather-button");
+        const weatherResult = document.getElementById("weather-result");
+
+        let map = null;
+        let userMarker = null;
+        let currentLatitude = 36.8;
+        let currentLongitude = 10.6;
+
+        /*
+         * عرض الشعار لمدة 2.2 ثانية
+         */
+        window.addEventListener("load", () => {
+            setTimeout(() => {
+                splashScreen.classList.add("hide");
+            }, 2200);
+        });
+
+        /*
+         * إظهار الشاشة المناسبة حسب حالة المستخدم
+         */
         onAuthStateChanged(auth, (user) => {
             if (user) {
-                document.getElementById('auth-screen').classList.add('hidden');
-                document.getElementById('app-screen').style.display = 'flex';
-                initMap();
+                authScreen.classList.add("hidden");
+                appScreen.style.display = "flex";
+
+                initializeMap();
+
+                setTimeout(() => {
+                    if (map) {
+                        map.invalidateSize();
+                    }
+                }, 250);
             } else {
-                document.getElementById('auth-screen').classList.remove('hidden');
-                document.getElementById('app-screen').style.display = 'none';
+                authScreen.classList.remove("hidden");
+                appScreen.style.display = "none";
             }
         });
 
-        // إعداد الخريطة
-        let map;
-        function initMap() {
-            if (map) return;
-            map = L.map('map').setView([36.8, 10.6], 10);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
-            
-            // أيقونة الكياك المخصصة
-            const kayakIcon = L.icon({ iconUrl: 'images/kayak-icon.png', iconSize: [32, 32] });
-            L.marker([36.8, 10.6], { icon: kayakIcon }).addTo(map);
+        /*
+         * تهيئة الخريطة
+         */
+        function initializeMap() {
+            if (map) {
+                return;
+            }
+
+            map = L.map("map").setView(
+                [currentLatitude, currentLongitude],
+                10
+            );
+
+            L.tileLayer(
+                "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {
+                    maxZoom: 19,
+                    attribution: "&copy; OpenStreetMap contributors"
+                }
+            ).addTo(map);
+
+            const kayakIcon = L.icon({
+                iconUrl: "images/kayak-icon.png",
+                iconSize: [42, 42],
+                iconAnchor: [21, 21],
+                popupAnchor: [0, -21]
+            });
+
+            userMarker = L.marker(
+                [currentLatitude, currentLongitude],
+                {
+                    icon: kayakIcon
+                }
+            )
+                .addTo(map)
+                .bindPopup("موقع الكاياك الحالي");
         }
 
-        // دالة الطقس
+        /*
+         * تسجيل الدخول
+         */
+        loginButton.addEventListener("click", async () => {
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+
+            if (!email || !password) {
+                showAuthMessage("يرجى إدخال البريد الإلكتروني وكلمة السر.");
+                return;
+            }
+
+            try {
+                setAuthLoading(true);
+
+                await signInWithEmailAndPassword(
+                    auth,
+                    email,
+                    password
+                );
+
+                showAuthMessage("");
+            } catch (error) {
+                showAuthMessage(getFirebaseErrorMessage(error));
+            } finally {
+                setAuthLoading(false);
+            }
+        });
+
+        /*
+         * إنشاء حساب جديد
+         */
+        registerButton.addEventListener("click", async () => {
+            const email = emailInput.value.trim();
+            const password = passwordInput.value;
+
+            if (!email || !password) {
+                showAuthMessage("يرجى إدخال البريد الإلكتروني وكلمة السر.");
+                return;
+            }
+
+            if (password.length < 6) {
+                showAuthMessage(
+                    "يجب أن تتكون كلمة السر من 6 أحرف أو أكثر."
+                );
+                return;
+            }
+
+            try {
+                setAuthLoading(true);
+
+                await createUserWithEmailAndPassword(
+                    auth,
+                    email,
+                    password
+                );
+
+                showAuthMessage("");
+            } catch (error) {
+                showAuthMessage(getFirebaseErrorMessage(error));
+            } finally {
+                setAuthLoading(false);
+            }
+        });
+
+        /*
+         * تسجيل الخروج
+         */
+        logoutButton.addEventListener("click", async () => {
+            try {
+                await signOut(auth);
+            } catch (error) {
+                alert("حدث خطأ أثناء تسجيل الخروج.");
+            }
+        });
+
+        /*
+         * تحديد موقع المستخدم
+         */
+        locateButton.addEventListener("click", () => {
+            if (!navigator.geolocation) {
+                alert("المتصفح لا يدعم تحديد الموقع.");
+                return;
+            }
+
+            locateButton.disabled = true;
+            locateButton.textContent = "جارٍ تحديد الموقع...";
+
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    currentLatitude = position.coords.latitude;
+                    currentLongitude = position.coords.longitude;
+
+                    initializeMap();
+
+                    const newPosition = [
+                        currentLatitude,
+                        currentLongitude
+                    ];
+
+                    userMarker.setLatLng(newPosition);
+                    map.setView(newPosition, 15);
+                    userMarker.openPopup();
+
+                    locateButton.disabled = false;
+                    locateButton.textContent = "تحديد موقعي";
+
+                    await getWeather();
+                },
+                (error) => {
+                    locateButton.disabled = false;
+                    locateButton.textContent = "تحديد موقعي";
+
+                    if (error.code === 1) {
+                        alert(
+                            "تم رفض صلاحية الموقع. اسمح للموقع من إعدادات المتصفح."
+                        );
+                    } else {
+                        alert("تعذر تحديد موقعك حاليًا.");
+                    }
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 15000,
+                    maximumAge: 60000
+                }
+            );
+        });
+
+        /*
+         * جلب الطقس والبحر من Open-Meteo
+         */
+        weatherButton.addEventListener("click", getWeather);
+
         async function getWeather() {
-            const res = await fetch('https://api.open-meteo.com/v1/forecast?latitude=36.8&longitude=10.6&current=wind_speed_10m');
-            const data = await res.json();
-            alert("سرعة الرياح: " + data.current.wind_speed_10m + " كم/س");
+            weatherButton.disabled = true;
+            weatherButton.textContent = "جارٍ تحميل البيانات...";
+            weatherResult.textContent = "جارٍ جلب بيانات البحر والطقس...";
+
+            try {
+                const forecastUrl =
+                    "https://api.open-meteo.com/v1/forecast" +
+                    `?latitude=${currentLatitude}` +
+                    `&longitude=${currentLongitude}` +
+                    "&current=wind_speed_10m,wind_gusts_10m" +
+                    "&wind_speed_unit=kmh" +
+                    "&timezone=auto";
+
+                const marineUrl =
+                    "https://marine-api.open-meteo.com/v1/marine" +
+                    `?latitude=${currentLatitude}` +
+                    `&longitude=${currentLongitude}` +
+                    "&current=wave_height,wave_direction,wave_period" +
+                    "&timezone=auto";
+
+                const [forecastResponse, marineResponse] =
+                    await Promise.all([
+                        fetch(forecastUrl),
+                        fetch(marineUrl)
+                    ]);
+
+                if (!forecastResponse.ok || !marineResponse.ok) {
+                    throw new Error("فشل تحميل بيانات الطقس.");
+                }
+
+                const forecastData = await forecastResponse.json();
+                const marineData = await marineResponse.json();
+
+                const windSpeed =
+                    forecastData.current?.wind_speed_10m ?? null;
+
+                const windGusts =
+                    forecastData.current?.wind_gusts_10m ?? null;
+
+                const waveHeight =
+                    marineData.current?.wave_height ?? null;
+
+                const waveDirection =
+                    marineData.current?.wave_direction ?? null;
+
+                const wavePeriod =
+                    marineData.current?.wave_period ?? null;
+
+                const condition = evaluateFishingConditions(
+                    windSpeed,
+                    windGusts,
+                    waveHeight
+                );
+
+                weatherResult.innerHTML = `
+                    <div>
+                        <strong>حالة الصيد:</strong>
+                        <span class="${condition.className}">
+                            ${condition.label}
+                        </span>
+                    </div>
+                    <div>سرعة الرياح: ${formatValue(windSpeed)} كم/س</div>
+                    <div>هبات الرياح: ${formatValue(windGusts)} كم/س</div>
+                    <div>ارتفاع الموج: ${formatValue(waveHeight)} متر</div>
+                    <div>اتجاه الموج: ${formatValue(waveDirection)}°</div>
+                    <div>فترة الموج: ${formatValue(wavePeriod)} ثانية</div>
+                    <small>
+                        الإحداثيات:
+                        ${currentLatitude.toFixed(5)},
+                        ${currentLongitude.toFixed(5)}
+                    </small>
+                `;
+            } catch (error) {
+                weatherResult.innerHTML =
+                    "تعذر جلب بيانات الطقس والبحر. تحقق من اتصال الإنترنت.";
+            } finally {
+                weatherButton.disabled = false;
+                weatherButton.textContent = "جلب حالة البحر والطقس";
+            }
         }
 
-        // دالة تحويل DMS إلى إحداثيات (لإضافة موقع صديق)
-        window.addFriendLocation = (deg, min, sec, dir, lonDeg, lonMin, lonSec, lonDir) => {
-            const toDec = (d, m, s, dir) => (Number(d) + Number(m)/60 + Number(s)/3600) * (dir === 'S' || dir === 'W' ? -1 : 1);
-            const lat = toDec(deg, min, sec, dir);
-            const lon = toDec(lonDeg, lonMin, lonSec, lonDir);
-            L.marker([lat, lon]).addTo(map).bindPopup("موقع الصديق").openPopup();
+        /*
+         * تقييم ملاءمة الظروف
+         */
+        function evaluateFishingConditions(
+            windSpeed,
+            windGusts,
+            waveHeight
+        ) {
+            const wind = Number(windSpeed) || 0;
+            const gusts = Number(windGusts) || 0;
+            const waves = Number(waveHeight) || 0;
+
+            if (wind <= 15 && gusts <= 22 && waves <= 0.6) {
+                return {
+                    label: "ملائم",
+                    className: "status-good"
+                };
+            }
+
+            if (wind <= 25 && gusts <= 35 && waves <= 1.2) {
+                return {
+                    label: "متوسط - توخَّ الحذر",
+                    className: "status-medium"
+                };
+            }
+
+            return {
+                label: "غير ملائم",
+                className: "status-bad"
+            };
+        }
+
+        /*
+         * إضافة موقع صديق باستخدام DMS
+         *
+         * مثال:
+         * addFriendLocation(36, 48, 30, "N", 10, 10, 20, "E");
+         */
+        window.addFriendLocation = (
+            latDegrees,
+            latMinutes,
+            latSeconds,
+            latDirection,
+            lonDegrees,
+            lonMinutes,
+            lonSeconds,
+            lonDirection
+        ) => {
+            if (!map) {
+                initializeMap();
+            }
+
+            const latitude = dmsToDecimal(
+                latDegrees,
+                latMinutes,
+                latSeconds,
+                latDirection
+            );
+
+            const longitude = dmsToDecimal(
+                lonDegrees,
+                lonMinutes,
+                lonSeconds,
+                lonDirection
+            );
+
+            if (
+                !Number.isFinite(latitude) ||
+                !Number.isFinite(longitude) ||
+                latitude < -90 ||
+                latitude > 90 ||
+                longitude < -180 ||
+                longitude > 180
+            ) {
+                alert("الإحداثيات غير صحيحة.");
+                return;
+            }
+
+            L.marker([latitude, longitude])
+                .addTo(map)
+                .bindPopup("موقع صديق")
+                .openPopup();
+
+            map.setView([latitude, longitude], 14);
         };
 
-        window.login = () => signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value);
-        window.logout = () => signOut(auth);
+        function dmsToDecimal(degrees, minutes, seconds, direction) {
+            const value =
+                Math.abs(Number(degrees)) +
+                Number(minutes) / 60 +
+                Number(seconds) / 3600;
+
+            const negative =
+                String(direction).toUpperCase() === "S" ||
+                String(direction).toUpperCase() === "W";
+
+            return negative ? -value : value;
+        }
+
+        function formatValue(value) {
+            return value === null || value === undefined
+                ? "غير متوفر"
+                : Number(value).toFixed(1);
+        }
+
+        function showAuthMessage(message) {
+            authMessage.textContent = message;
+        }
+
+        function setAuthLoading(isLoading) {
+            loginButton.disabled = isLoading;
+            registerButton.disabled = isLoading;
+
+            if (isLoading) {
+                loginButton.textContent = "جارٍ التنفيذ...";
+            } else {
+                loginButton.textContent = "دخول";
+            }
+        }
+
+        function getFirebaseErrorMessage(error) {
+            const code = error?.code || "";
+
+            if (code.includes("invalid-credential")) {
+                return "البريد الإلكتروني أو كلمة السر غير صحيحة.";
+            }
+
+            if (code.includes("email-already-in-use")) {
+                return "هذا البريد مستخدم مسبقًا.";
+            }
+
+            if (code.includes("invalid-email")) {
+                return "صيغة البريد الإلكتروني غير صحيحة.";
+            }
+
+            if (code.includes("weak-password")) {
+                return "كلمة السر ضعيفة. استخدم 6 أحرف على الأقل.";
+            }
+
+            if (code.includes("too-many-requests")) {
+                return "محاولات كثيرة. حاول لاحقًا.";
+            }
+
+            return "حدث خطأ. تحقق من بيانات Firebase واتصال الإنترنت.";
+        }
     </script>
 </body>
+</html>
