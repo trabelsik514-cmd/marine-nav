@@ -50,6 +50,11 @@
             opacity: 0.9;
         }
 
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
         input {
             width: min(90%, 360px);
             padding: 12px;
@@ -71,6 +76,7 @@
             background: var(--dark);
             opacity: 1;
             visibility: visible;
+            pointer-events: none;
             transition:
                 opacity 0.7s ease,
                 visibility 0.7s ease;
@@ -304,8 +310,6 @@
         /*
          * مهم:
          * استبدل القيم التالية ببيانات مشروعك من Firebase.
-         * تجدها من:
-         * Firebase Console > Project settings > Your apps
          */
         const firebaseConfig = {
             apiKey: "ضع_API_KEY_هنا",
@@ -332,6 +336,9 @@
         const locateButton = document.getElementById("locate-button");
         const weatherButton = document.getElementById("weather-button");
         const weatherResult = document.getElementById("weather-result");
+
+        const WEATHER_DEFAULT_TEXT =
+            "اضغط على زر جلب حالة البحر والطقس.";
 
         let map = null;
         let userMarker = null;
@@ -365,8 +372,32 @@
             } else {
                 authScreen.classList.remove("hidden");
                 appScreen.style.display = "none";
+
+                resetAppState();
             }
         });
+
+        /*
+         * إعادة تعيين حالة التطبيق عند تسجيل الخروج
+         */
+        function resetAppState() {
+            currentLatitude = 36.8;
+            currentLongitude = 10.6;
+
+            weatherResult.textContent = WEATHER_DEFAULT_TEXT;
+
+            if (map) {
+                if (userMarker) {
+                    map.removeLayer(userMarker);
+                    userMarker = null;
+                }
+
+                map.setView(
+                    [currentLatitude, currentLongitude],
+                    10
+                );
+            }
+        }
 
         /*
          * تهيئة الخريطة
@@ -389,6 +420,16 @@
                 }
             ).addTo(map);
 
+            userMarker = createUserMarker(
+                [currentLatitude, currentLongitude],
+                "موقع الكاياك الحالي"
+            );
+        }
+
+        /*
+         * إنشاء ماركر مع أيقونة الكاياك وخيار بديل عند فشل تحميل الصورة
+         */
+        function createUserMarker(position, popupText) {
             const kayakIcon = L.icon({
                 iconUrl: "images/kayak-icon.png",
                 iconSize: [42, 42],
@@ -396,14 +437,22 @@
                 popupAnchor: [0, -21]
             });
 
-            userMarker = L.marker(
-                [currentLatitude, currentLongitude],
-                {
-                    icon: kayakIcon
-                }
-            )
+            const marker = L.marker(position, { icon: kayakIcon })
                 .addTo(map)
-                .bindPopup("موقع الكاياك الحالي");
+                .bindPopup(popupText);
+
+            /*
+             * إذا فشل تحميل أيقونة الكاياك، استخدم الأيقونة الافتراضية
+             */
+            const iconElement = marker.getElement()?.querySelector("img");
+
+            if (iconElement) {
+                iconElement.addEventListener("error", () => {
+                    marker.setIcon(new L.Icon.Default());
+                }, { once: true });
+            }
+
+            return marker;
         }
 
         /*
@@ -492,239 +541,164 @@
             }
 
             locateButton.disabled = true;
-            locateButton.textContent = "جارٍ تحديد الموقع...";
+             locateButton.textContent = "جارٍ تحديد الموقع...";
 
             navigator.geolocation.getCurrentPosition(
-                async (position) => {
+                (position) => {
                     currentLatitude = position.coords.latitude;
                     currentLongitude = position.coords.longitude;
 
-                    initializeMap();
-
-                    const newPosition = [
+                    const positionArray = [
                         currentLatitude,
                         currentLongitude
                     ];
 
-                    userMarker.setLatLng(newPosition);
-                    map.setView(newPosition, 15);
-                    userMarker.openPopup();
+                    if (map) {
+                        map.setView(positionArray, 13);
+
+                        if (userMarker) {
+                            map.removeLayer(userMarker);
+                        }
+
+                        userMarker = createUserMarker(
+                            positionArray,
+                            "موقعك الحالي 🎣"
+                        );
+                    }
 
                     locateButton.disabled = false;
                     locateButton.textContent = "تحديد موقعي";
-
-                    await getWeather();
                 },
                 (error) => {
+                    alert(
+                        "تعذر تحديد موقعك. تأكد من تفعيل خدمة الموقع."
+                    );
+
                     locateButton.disabled = false;
                     locateButton.textContent = "تحديد موقعي";
-
-                    if (error.code === 1) {
-                        alert(
-                            "تم رفض صلاحية الموقع. اسمح للموقع من إعدادات المتصفح."
-                        );
-                    } else {
-                        alert("تعذر تحديد موقعك حاليًا.");
-                    }
                 },
                 {
                     enableHighAccuracy: true,
-                    timeout: 15000,
-                    maximumAge: 60000
+                    timeout: 10000,
+                    maximumAge: 0
                 }
             );
         });
 
         /*
-         * جلب الطقس والبحر من Open-Meteo
+         * جلب حالة البحر والطقس
          */
-        weatherButton.addEventListener("click", getWeather);
-
-        async function getWeather() {
+        weatherButton.addEventListener("click", async () => {
             weatherButton.disabled = true;
-            weatherButton.textContent = "جارٍ تحميل البيانات...";
-            weatherResult.textContent = "جارٍ جلب بيانات البحر والطقس...";
+            weatherButton.textContent = "جارٍ جلب البيانات...";
+
+            weatherResult.textContent = "جارٍ جلب البيانات، انتظر قليلاً...";
 
             try {
-                const forecastUrl =
-                    "https://api.open-meteo.com/v1/forecast" +
-                    `?latitude=${currentLatitude}` +
-                    `&longitude=${currentLongitude}` +
-                    "&current=wind_speed_10m,wind_gusts_10m" +
-                    "&wind_speed_unit=kmh" +
-                    "&timezone=auto";
+                const apiKey = "ضع_مفتاح_الطقس_هنا";
 
-                const marineUrl =
-                    "https://marine-api.open-meteo.com/v1/marine" +
-                    `?latitude=${currentLatitude}` +
-                    `&longitude=${currentLongitude}` +
-                    "&current=wave_height,wave_direction,wave_period" +
-                    "&timezone=auto";
-
-                const [forecastResponse, marineResponse] =
-                    await Promise.all([
-                        fetch(forecastUrl),
-                        fetch(marineUrl)
-                    ]);
-
-                if (!forecastResponse.ok || !marineResponse.ok) {
-                    throw new Error("فشل تحميل بيانات الطقس.");
-                }
-
-                const forecastData = await forecastResponse.json();
-                const marineData = await marineResponse.json();
-
-                const windSpeed =
-                    forecastData.current?.wind_speed_10m ?? null;
-
-                const windGusts =
-                    forecastData.current?.wind_gusts_10m ?? null;
-
-                const waveHeight =
-                    marineData.current?.wave_height ?? null;
-
-                const waveDirection =
-                    marineData.current?.wave_direction ?? null;
-
-                const wavePeriod =
-                    marineData.current?.wave_period ?? null;
-
-                const condition = evaluateFishingConditions(
-                    windSpeed,
-                    windGusts,
-                    waveHeight
+                const response = await fetch(
+                    "https://api.openweathermap.org/data/2.5/weather" +
+                    "?lat=" + currentLatitude +
+                    "&lon=" + currentLongitude +
+                    "&appid=" + apiKey +
+                    "&units=metric" +
+                    "&lang=ar"
                 );
 
-                weatherResult.innerHTML = `
-                    <div>
-                        <strong>حالة الصيد:</strong>
-                        <span class="${condition.className}">
-                            ${condition.label}
-                        </span>
-                    </div>
-                    <div>سرعة الرياح: ${formatValue(windSpeed)} كم/س</div>
-                    <div>هبات الرياح: ${formatValue(windGusts)} كم/س</div>
-                    <div>ارتفاع الموج: ${formatValue(waveHeight)} متر</div>
-                    <div>اتجاه الموج: ${formatValue(waveDirection)}°</div>
-                    <div>فترة الموج: ${formatValue(wavePeriod)} ثانية</div>
-                    <small>
-                        الإحداثيات:
-                        ${currentLatitude.toFixed(5)},
-                        ${currentLongitude.toFixed(5)}
-                    </small>
-                `;
-            } catch (error) {
+                if (!response.ok) {
+                    throw new Error("فشل الاتصال بخدمة الطقس.");
+                }
+
+                const data = await response.json();
+
+                const temperature = Math.round(data.main.temp);
+                const windSpeed = data.wind.speed;
+                const description = data.weather[0].description;
+
+                /*
+                 * تقييم حالة البحر حسب سرعة الرياح (متر/ثانية)
+                 */
+                let seaStatusText = "";
+                let seaStatusClass = "";
+
+                if (windSpeed < 5) {
+                    seaStatusText = "ممتازة ✅";
+                    seaStatusClass = "status-good";
+                } else if (windSpeed < 8) {
+                    seaStatusText = "متوسطة ⚠️";
+                    seaStatusClass = "status-medium";
+                } else {
+                    seaStatusText = "خطيرة ❌";
+                    seaStatusClass = "status-bad";
+                }
+
                 weatherResult.innerHTML =
-                    "تعذر جلب بيانات الطقس والبحر. تحقق من اتصال الإنترنت.";
+                    "📍 <strong>الموقع:</strong> " +
+                    currentLatitude.toFixed(3) + ", " +
+                    currentLongitude.toFixed(3) +
+                    "<br>" +
+                    "🌡️ <strong>الطقس:</strong> " +
+                    description +
+                    "<br>" +
+                    "🌡️ <strong>الحرارة:</strong> " +
+                    temperature + "°C" +
+                    "<br>" +
+                    "💨 <strong>سرعة الرياح:</strong> " +
+                    windSpeed.toFixed(1) + " م/ث" +
+                    "<br>" +
+                    "🌊 <strong>حالة البحر للكاياك:</strong> " +
+                    '<span class="' + seaStatusClass + '">' +
+                    seaStatusText +
+                    "</span>";
+
+                if (windSpeed >= 8) {
+                    alert(
+                        "⚠️ تحذير: حالة البحر خطيرة حالياً. " +
+                        "يُنصح بعدم الخروج بالكاياك."
+                    );
+                }
+            } catch (error) {
+                weatherResult.textContent =
+                    "تعذر جلب بيانات الطقس. حاول مرة أخرى.";
             } finally {
                 weatherButton.disabled = false;
                 weatherButton.textContent = "جلب حالة البحر والطقس";
             }
-        }
+        });
 
         /*
-         * تقييم ملاءمة الظروف
+         * ترجمة رسائل أخطاء Firebase إلى العربية
          */
-        function evaluateFishingConditions(
-            windSpeed,
-            windGusts,
-            waveHeight
-        ) {
-            const wind = Number(windSpeed) || 0;
-            const gusts = Number(windGusts) || 0;
-            const waves = Number(waveHeight) || 0;
+        function getFirebaseErrorMessage(error) {
+            const code = error?.code || "";
 
-            if (wind <= 15 && gusts <= 22 && waves <= 0.6) {
-                return {
-                    label: "ملائم",
-                    className: "status-good"
-                };
+            switch (code) {
+                case "auth/invalid-email":
+                    return "البريد الإلكتروني غير صالح.";
+
+                case "auth/user-not-found":
+                    return "لا يوجد حساب بهذا البريد الإلكتروني.";
+
+                case "auth/wrong-password":
+                case "auth/invalid-credential":
+                    return "كلمة السر غير صحيحة.";
+
+                case "auth/email-already-in-use":
+                    return "هذا البريد الإلكتروني مستخدم بالفعل.";
+
+                case "auth/weak-password":
+                    return "كلمة السر ضعيفة (6 أحرف على الأقل).";
+
+                case "auth/too-many-requests":
+                    return "محاولات كثيرة. انتظر قليلاً ثم حاول مجدداً.";
+
+                case "auth/network-request-failed":
+                    return "مشكلة في الاتصال بالإنترنت.";
+
+                default:
+                    return "حدث خطأ. حاول مرة أخرى.";
             }
-
-            if (wind <= 25 && gusts <= 35 && waves <= 1.2) {
-                return {
-                    label: "متوسط - توخَّ الحذر",
-                    className: "status-medium"
-                };
-            }
-
-            return {
-                label: "غير ملائم",
-                className: "status-bad"
-            };
-        }
-
-        /*
-         * إضافة موقع صديق باستخدام DMS
-         *
-         * مثال:
-         * addFriendLocation(36, 48, 30, "N", 10, 10, 20, "E");
-         */
-        window.addFriendLocation = (
-            latDegrees,
-            latMinutes,
-            latSeconds,
-            latDirection,
-            lonDegrees,
-            lonMinutes,
-            lonSeconds,
-            lonDirection
-        ) => {
-            if (!map) {
-                initializeMap();
-            }
-
-            const latitude = dmsToDecimal(
-                latDegrees,
-                latMinutes,
-                latSeconds,
-                latDirection
-            );
-
-            const longitude = dmsToDecimal(
-                lonDegrees,
-                lonMinutes,
-                lonSeconds,
-                lonDirection
-            );
-
-            if (
-                !Number.isFinite(latitude) ||
-                !Number.isFinite(longitude) ||
-                latitude < -90 ||
-                latitude > 90 ||
-                longitude < -180 ||
-                longitude > 180
-            ) {
-                alert("الإحداثيات غير صحيحة.");
-                return;
-            }
-
-            L.marker([latitude, longitude])
-                .addTo(map)
-                .bindPopup("موقع صديق")
-                .openPopup();
-
-            map.setView([latitude, longitude], 14);
-        };
-
-        function dmsToDecimal(degrees, minutes, seconds, direction) {
-            const value =
-                Math.abs(Number(degrees)) +
-                Number(minutes) / 60 +
-                Number(seconds) / 3600;
-
-            const negative =
-                String(direction).toUpperCase() === "S" ||
-                String(direction).toUpperCase() === "W";
-
-            return negative ? -value : value;
-        }
-
-        function formatValue(value) {
-            return value === null || value === undefined
-                ? "غير متوفر"
-                : Number(value).toFixed(1);
         }
 
         function showAuthMessage(message) {
@@ -734,38 +708,6 @@
         function setAuthLoading(isLoading) {
             loginButton.disabled = isLoading;
             registerButton.disabled = isLoading;
-
-            if (isLoading) {
-                loginButton.textContent = "جارٍ التنفيذ...";
-            } else {
-                loginButton.textContent = "دخول";
-            }
-        }
-
-        function getFirebaseErrorMessage(error) {
-            const code = error?.code || "";
-
-            if (code.includes("invalid-credential")) {
-                return "البريد الإلكتروني أو كلمة السر غير صحيحة.";
-            }
-
-            if (code.includes("email-already-in-use")) {
-                return "هذا البريد مستخدم مسبقًا.";
-            }
-
-            if (code.includes("invalid-email")) {
-                return "صيغة البريد الإلكتروني غير صحيحة.";
-            }
-
-            if (code.includes("weak-password")) {
-                return "كلمة السر ضعيفة. استخدم 6 أحرف على الأقل.";
-            }
-
-            if (code.includes("too-many-requests")) {
-                return "محاولات كثيرة. حاول لاحقًا.";
-            }
-
-            return "حدث خطأ. تحقق من بيانات Firebase واتصال الإنترنت.";
         }
     </script>
 </body>
