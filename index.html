@@ -197,28 +197,19 @@
             );
         }
 
-        /* ماركر الكاياك مع أيقونة بديلة عند فشل الصورة */
+        /* ماركر الكاياك بأيقونة إيموجي (لا تحتاج ملفات) */
         function createUserMarker(position, popupText) {
-            const kayakIcon = L.icon({
-                iconUrl: "images/kayak-icon.png",
-                iconSize: [42, 42],
-                iconAnchor: [21, 21],
-                popupAnchor: [0, -21]
+            const kayakIcon = L.divIcon({
+                html: '<div style="font-size:34px;line-height:34px;text-align:center;">🛶</div>',
+                className: "",
+                iconSize: [34, 34],
+                iconAnchor: [17, 17],
+                popupAnchor: [0, -17]
             });
 
-            const marker = L.marker(position, { icon: kayakIcon })
+            return L.marker(position, { icon: kayakIcon })
                 .addTo(map)
                 .bindPopup(popupText);
-
-            const img = marker.getElement()?.querySelector("img");
-
-            if (img) {
-                img.addEventListener("error", () => {
-                    marker.setIcon(new L.Icon.Default());
-                }, { once: true });
-            }
-
-            return marker;
         }
 
         /* تحديد موقع المستخدم */
