@@ -2,13 +2,49 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>التطبيق البحري</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-  html, body { margin:0; padding:0; font-family: sans-serif; }
-  #map { width:100%; height:500px; border-radius:10px; }
+  html, body {
+    margin:0; padding:0; height:100%;
+    font-family: sans-serif;
+    background:#263238;
+  }
 
+  /* حاوية الخريطة تملأ الشاشة عدا الشريط السفلي */
+  #mapWrap {
+    position:relative;
+    width:100%;
+    height:calc(100vh - 130px);
+    min-height:300px;
+  }
+  #map {
+    width:100%; height:100%;
+    background:#90a4ae; /* لون مؤقت قبل تحميل البلاطات */
+  }
+
+  /* شريط أزرار الخرائط */
+  #layerBar {
+    position:absolute; top:10px; left:10px; z-index:1000;
+    display:flex; flex-direction:column; gap:5px;
+  }
+  #layerBar button {
+    background:#263238; color:#fff; border:none; padding:8px 12px;
+    border-radius:8px; cursor:pointer; font-size:14px;
+    box-shadow:0 2px 5px rgba(0,0,0,.4);
+  }
+  #layerBar button.active { background:#0288d1; }
+
+  /* زر إلغاء الوجهة */
+  #clearDest {
+    position:absolute; top:10px; right:10px; z-index:1000;
+    background:#c62828; color:#fff; border:none; padding:8px 12px;
+    border-radius:8px; cursor:pointer; display:none;
+    box-shadow:0 2px 5px rgba(0,0,0,.4);
+  }
+
+  /* شريط المعلومات السفلي */
   #infoBar {
     background:#263238; color:#fff; padding:10px; margin-top:5px;
     display:flex; justify-content:space-around; border-radius:10px;
@@ -17,22 +53,7 @@
   #infoBar b { font-size:1.2em; }
   #speedBox { cursor:pointer; }
 
-  #layerBar {
-    position:absolute; top:10px; left:10px; z-index:1000;
-    display:flex; flex-direction:column; gap:5px;
-  }
-  #layerBar button {
-    background:#263238; color:#fff; border:none; padding:8px 12px;
-    border-radius:8px; cursor:pointer; font-size:14px;
-  }
-  #layerBar button.active { background:#0288d1; }
-
-  #clearDest {
-    position:absolute; top:10px; right:10px; z-index:1000;
-    background:#c62828; color:#fff; border:none; padding:8px 12px;
-    border-radius:8px; cursor:pointer; display:none;
-  }
-
+  /* سهم القارب */
   .boat-arrow {
     width:0; height:0;
     border-left:12px solid transparent;
@@ -44,12 +65,12 @@
 </head>
 <body>
 
-<div style="position:relative;">
+<div id="mapWrap">
   <div id="map"></div>
 
   <div id="layerBar">
     <button id="btnSat" class="active">🛰️ قمر صناعي</button>
-    <button id="btnSea">🗺️ عادية</button>
+    <button id="btnStreet">🗺️ عادية</button>
     <button id="btnDepth">📊 الأعماق</button>
   </div>
 
@@ -58,52 +79,52 @@
 
 <div id="infoBar">
   <div id="speedBox">⚡<br><b id="speed">0.0</b> <span id="speedUnit">كم/س</span></div>
+  <div>🧭<br><b id="bearing">--°</b></div>
   <div>📏<br><b id="distance">--</b></div>
   <div>⏱️<br><b id="time">--:--</b></div>
-  <div>🧭<br><b id="bearing">--°</b></div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 (function(){
   'use strict';
 
   /* ================= الخريطة ================= */
-  var map = L.map('map').setView([36.8700, 10.3480], 14);
+  var map = L.map('map', { zoomControl: true }).setView([36.8700, 10.3480], 14);
 
-  var satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {attribution:'Esri'});
-  var streetLayer = L.tileLayer('httpstile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'OSM'});
-  var seamarkLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png');
+  var satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {attribution:'Esri', maxZoom: 18});
+  var streetLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'OSM', maxZoom: 19});
+  var seamarkLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {maxZoom: 18});
+  var depthLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {maxZoom: 18});
+  var depthOn = false;
 
   satLayer.addTo(map);
   seamarkLayer.addTo(map);
 
-  var depthLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png');
-  var depthOn = false;
-
-  function showLayer(show, hide) {
+  function switchLayer(show, hide, btn) {
     map.removeLayer(hide);
     show.addTo(map);
     seamarkLayer.addTo(map);
     if (depthOn) depthLayer.addTo(map);
+    document.querySelectorAll('#layerBar button').forEach(function(b){
+      b.classList.remove('active');
+    });
+    btn.classList.add('active');
   }
 
   document.getElementById('btnSat').onclick = function(){
-    showLayer(satLayer, streetLayer);
-    this.classList.add('active');
-    document.getElementById('btnSea').classList.remove('active');
+    switchLayer(satLayer, streetLayer, this);
   };
 
-  document.getElementById('btnSea').onclick = function(){
-    showLayer(streetLayer, satLayer);
-    this.classList.add('active');
-    document.getElementById('btnSat').classList.remove('active');
+  document.getElementById('btnStreet').onclick = function(){
+    switchLayer(streetLayer, satLayer, this);
   };
 
   document.getElementById('btnDepth').onclick = function(){
     depthOn = !depthOn;
     this.classList.toggle('active', depthOn);
-    if (depthOn) { depthLayer.addTo(map); } else { map.removeLayer(depthLayer); }
+    if (depthOn) depthLayer.addTo(map);
+    else map.removeLayer(depthLayer);
   };
 
   /* ================= الحالة ================= */
@@ -117,7 +138,9 @@
       var s = JSON.parse(saved);
       setDestination(L.latLng(s.lat, s.lng));
     }
-  } catch(e){  /* =================وات حسابية ================= */
+  } catch(e){}
+
+  /* ================= أدوات حسابية ================= */
   function haversine(lat1, lon1, lat2, lon2) {
     var R = 6371000, rad = function(d){ return d * Math.PI / 180; };
     var dLat = rad(lat2-lat1), dLon = rad(lon2-lon1);
@@ -130,7 +153,7 @@
     var rad = function(d){ return d * Math.PI / 180; };
     var y = Math.sin(rad(lon2-lon1)) * Math.cos(rad(lat2));
     var x = Math.cos(rad(lat1))*Math.sin(rad(lat2)) -
- Math.sin(rad(lat1))*Math.cos(rad(lat2))*Math.cos(rad(lon2-lon1));
+            Math.sin(rad(lat1))*Math.cos(rad(lat2))*Math.cos(rad(lon2-lon1));
     return (Math.atan2(y, x) * 180/Math.PI + 360) % 360;
   }
 
@@ -172,7 +195,7 @@
 
   map.on('click', function(e){
     setDestination(e.latlng);
-    try { localStorage.setItem('dest', JSON.stringify(e.latlng)); } catch(err){}
+    try { localStorage.setItem('dest', JSON.stringify({lat:e.latlng.lat, lng:e.latlng.lng})); } catch(err){}
   });
 
   document.getElementById('clearDest').onclick = function(){
@@ -186,9 +209,9 @@
     try { localStorage.removeItem('dest'); } catch(err){}
   };
 
-  /* ================= تبديل وحدة السرعة ================= */
-  var speedUnit = 'h';
-  document.getElementByIdspeedBox').onclick = function(){
+  /* ================= وحدة السرعة ================= */
+  var speedUnit = 'kmh';
+  document.getElementById('speedBox').onclick = function(){
     speedUnit = (speedUnit === 'kmh') ? 'knots' : 'kmh';
     document.getElementById('speedUnit').textContent =
       speedUnit === 'kmh' ? 'كم/س' : 'عقدة';
@@ -200,7 +223,7 @@
     document.getElementById('speed').textContent = v.toFixed(1);
   }
 
-  /* ================= تتبع GPS ================= */
+  /* ================= GPS ================= */
   if (navigator.geolocation) {
     navigator.geolocation.watchPosition(function(pos){
       userPos = L.latLng(pos.coords.latitude, pos.coords.longitude);
@@ -208,11 +231,11 @@
       var s = pos.coords.speed;
       lastSpeed = (s !== null && s !== undefined && s >= 0) ? s : 0;
 
-      /* سرعة احتياطية محسوبة يدوياً - تم تصحيح الخطأ هنا */
-      if (lastSpeed ===  && prevPos {
- var dt = (pos.timestamp - prevPos.t) / 1000;
- if (dt > 0) {
-          var dd = haversine(prevPos, prevPos.lng, userPos, userPos.lng);
+      /* سرعة احتياطية محسوبة يدوياً */
+      if (lastSpeed === 0 && prevPos) {
+        var dt = (pos.timestamp - prevPos.t) / 1000;
+        if (dt > 0) {
+          var dd = haversine(prevPos.lat, prevPos.lng, userPos.lat, userPos.lng);
           if (dd / dt > 0.3) lastSpeed = dd / dt;
         }
       }
@@ -235,7 +258,7 @@
       updateSpeedDisplay();
       updateRoute();
 
-      /* متابعة القارب فقط عند خروجه من الشاشة */
+      /* تتبع فقط عند خروج القارب من الشاشة */
       if (!map.getBounds().pad(0.2).contains(userPos)) {
         map.panTo(userPos);
       } else if (map.getZoom() < 14 && !destMarker) {
@@ -245,6 +268,17 @@
       console.log('GPS: ' + err.message);
     }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 });
   }
+
+  /* ================= إصلاح الخريطة البيضاء ================= */
+  map.invalidateSize();
+
+  setTimeout(function(){ map.invalidateSize(); }, 500);
+  setTimeout(function(){ map.invalidateSize(); }, 1500);
+
+  window.addEventListener('resize', function(){ map.invalidateSize(); });
+  window.addEventListener('orientationchange', function(){
+    setTimeout(function(){ map.invalidateSize(); }, 300);
+  });
 
 })();
 </script>
