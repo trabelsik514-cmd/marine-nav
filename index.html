@@ -107,43 +107,6 @@
             }
         }
 
-        /* شاشة الدخول */
-        #auth-screen {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-
-        .auth-card {
-            width: min(92vw, 420px);
-            padding: 28px 20px;
-            text-align: center;
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
-        }
-
-        .auth-logo {
-            width: min(70vw, 250px);
-            max-height: 150px;
-            object-fit: contain;
-            margin-bottom: 15px;
-        }
-
-        .auth-card h2 {
-            margin-top: 5px;
-            color: var(--dark);
-        }
-
-        #auth-message {
-            min-height: 24px;
-            margin-top: 10px;
-            color: var(--danger);
-            font-size: 14px;
-        }
-
         /* التطبيق */
         #app-screen {
             display: none;
@@ -164,12 +127,6 @@
 
         .top-bar strong {
             font-size: 18px;
-        }
-
-        .top-bar button {
-            margin: 0;
-            padding: 8px 12px;
-            background: var(--danger);
         }
 
         #map {
@@ -211,11 +168,6 @@
         .hidden {
             display: none !important;
         }
-
-        .loading {
-            opacity: 0.7;
-            pointer-events: none;
-        }
     </style>
 </head>
 
@@ -229,50 +181,10 @@
         >
     </div>
 
-    <!-- شاشة تسجيل الدخول -->
-    <section id="auth-screen" class="hidden">
-        <div class="auth-card">
-            <img
-                class="auth-logo"
-                src="1789584118704.jpg"
-                alt="Redline Fishing"
-            >
-
-            <h2>تسجيل الدخول</h2>
-
-            <input
-                type="email"
-                id="email"
-                placeholder="البريد الإلكتروني"
-                autocomplete="email"
-            >
-
-            <input
-                type="password"
-                id="password"
-                placeholder="كلمة السر"
-                autocomplete="current-password"
-            >
-
-            <div>
-                <button id="login-button" type="button">
-                    دخول
-                </button>
-
-                <button id="register-button" type="button">
-                    إنشاء حساب
-                </button>
-            </div>
-
-            <div id="auth-message"></div>
-        </div>
-    </section>
-
     <!-- شاشة التطبيق -->
     <section id="app-screen">
         <div class="top-bar">
             <strong>Redline Fishing</strong>
-            <button id="logout-button" type="button">تسجيل الخروج</button>
         </div>
 
         <div id="map"></div>
@@ -294,42 +206,10 @@
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-    <script type="module">
-        import {
-            initializeApp
-        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-
-        import {
-            getAuth,
-            onAuthStateChanged,
-            signInWithEmailAndPassword,
-            createUserWithEmailAndPassword,
-            signOut
-        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
- // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyAGKqjPxkdrPyZvBnGv2KJgraVdOUYeobs",
-  authDomain: "marine-nav.firebaseapp.com",
-  projectId: "marine-nav",
-  storageBucket: "marine-nav.firebasestorage.app",
-  messagingSenderId: "965847809562",
-  appId: "1:965847809562:web:cfc643b71d32eead2a1ba3",
-  measurementId: "G-MSGNN93HQ4"
-  };
-
-        const firebaseApp = initializeApp(firebaseConfig);
-        const auth = getAuth(firebaseApp);
-
+    <script>
         const splashScreen = document.getElementById("splash-screen");
-        const authScreen = document.getElementById("auth-screen");
         const appScreen = document.getElementById("app-screen");
-        const authMessage = document.getElementById("auth-message");
 
-        const emailInput = document.getElementById("email");
-        const passwordInput = document.getElementById("password");
-        const loginButton = document.getElementById("login-button");
-        const registerButton = document.getElementById("register-button");
-        const logoutButton = document.getElementById("logout-button");
         const locateButton = document.getElementById("locate-button");
         const weatherButton = document.getElementById("weather-button");
         const weatherResult = document.getElementById("weather-result");
@@ -343,20 +223,12 @@ const firebaseConfig = {
         let currentLongitude = 10.6;
 
         /*
-         * عرض الشعار لمدة 2.2 ثانية
+         * عرض الشعار لمدة 2.2 ثانية ثم فتح التطبيق مباشرة
          */
         window.addEventListener("load", () => {
             setTimeout(() => {
                 splashScreen.classList.add("hide");
-            }, 2200);
-        });
 
-        /*
-         * إظهار الشاشة المناسبة حسب حالة المستخدم
-         */
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                authScreen.classList.add("hidden");
                 appScreen.style.display = "flex";
 
                 initializeMap();
@@ -366,35 +238,8 @@ const firebaseConfig = {
                         map.invalidateSize();
                     }
                 }, 250);
-            } else {
-                authScreen.classList.remove("hidden");
-                appScreen.style.display = "none";
-
-                resetAppState();
-            }
+            }, 2200);
         });
-
-        /*
-         * إعادة تعيين حالة التطبيق عند تسجيل الخروج
-         */
-        function resetAppState() {
-            currentLatitude = 36.8;
-            currentLongitude = 10.6;
-
-            weatherResult.textContent = WEATHER_DEFAULT_TEXT;
-
-            if (map) {
-                if (userMarker) {
-                    map.removeLayer(userMarker);
-                    userMarker = null;
-                }
-
-                map.setView(
-                    [currentLatitude, currentLongitude],
-                    10
-                );
-            }
-        }
 
         /*
          * تهيئة الخريطة
@@ -438,10 +283,8 @@ const firebaseConfig = {
                 .addTo(map)
                 .bindPopup(popupText);
 
-            /*
-             * إذا فشل تحميل أيقونة الكاياك، استخدم الأيقونة الافتراضية
-             */
-            const iconElement = marker.getElement()?.querySelector("img");
+            const iconElement =
+                marker.getElement()?.querySelector("img");
 
             if (iconElement) {
                 iconElement.addEventListener("error", () => {
@@ -453,82 +296,6 @@ const firebaseConfig = {
         }
 
         /*
-         * تسجيل الدخول
-         */
-        loginButton.addEventListener("click", async () => {
-            const email = emailInput.value.trim();
-            const password = passwordInput.value;
-
-            if (!email || !password) {
-                showAuthMessage("يرجى إدخال البريد الإلكتروني وكلمة السر.");
-                return;
-            }
-
-            try {
-                setAuthLoading(true);
-
-                await signInWithEmailAndPassword(
-                    auth,
-                    email,
-                    password
-                );
-
-                showAuthMessage("");
-            } catch (error) {
-                showAuthMessage(getFirebaseErrorMessage(error));
-            } finally {
-                setAuthLoading(false);
-            }
-        });
-
-        /*
-         * إنشاء حساب جديد
-         */
-        registerButton.addEventListener("click", async () => {
-            const email = emailInput.value.trim();
-            const password = passwordInput.value;
-
-            if (!email || !password) {
-                showAuthMessage("يرجى إدخال البريد الإلكتروني وكلمة السر.");
-                return;
-            }
-
-            if (password.length < 6) {
-                showAuthMessage(
-                    "يجب أن تتكون كلمة السر من 6 أحرف أو أكثر."
-                );
-                return;
-            }
-
-            try {
-                setAuthLoading(true);
-
-                await createUserWithEmailAndPassword(
-                    auth,
-                    email,
-                    password
-                );
-
-                showAuthMessage("");
-            } catch (error) {
-                showAuthMessage(getFirebaseErrorMessage(error));
-            } finally {
-                setAuthLoading(false);
-            }
-        });
-
-        /*
-         * تسجيل الخروج
-         */
-        logoutButton.addEventListener("click", async () => {
-            try {
-                await signOut(auth);
-            } catch (error) {
-                alert("حدث خطأ أثناء تسجيل الخروج.");
-            }
-        });
-
-        /*
          * تحديد موقع المستخدم
          */
         locateButton.addEventListener("click", () => {
@@ -538,7 +305,7 @@ const firebaseConfig = {
             }
 
             locateButton.disabled = true;
-             locateButton.textContent = "جارٍ تحديد الموقع...";
+            locateButton.textContent = "جارٍ تحديد الموقع...";
 
             navigator.geolocation.getCurrentPosition(
                 (position) => {
@@ -566,7 +333,7 @@ const firebaseConfig = {
                     locateButton.disabled = false;
                     locateButton.textContent = "تحديد موقعي";
                 },
-                (error) => {
+                () => {
                     alert(
                         "تعذر تحديد موقعك. تأكد من تفعيل خدمة الموقع."
                     );
@@ -663,49 +430,6 @@ const firebaseConfig = {
                 weatherButton.textContent = "جلب حالة البحر والطقس";
             }
         });
-
-        /*
-         * ترجمة رسائل أخطاء Firebase إلى العربية
-         */
-        function getFirebaseErrorMessage(error) {
-            const code = error?.code || "";
-
-            switch (code) {
-                case "auth/invalid-email":
-                    return "البريد الإلكتروني غير صالح.";
-
-                case "auth/user-not-found":
-                    return "لا يوجد حساب بهذا البريد الإلكتروني.";
-
-                case "auth/wrong-password":
-                case "auth/invalid-credential":
-                    return "كلمة السر غير صحيحة.";
-
-                case "auth/email-already-in-use":
-                    return "هذا البريد الإلكتروني مستخدم بالفعل.";
-
-                case "auth/weak-password":
-                    return "كلمة السر ضعيفة (6 أحرف على الأقل).";
-
-                case "auth/too-many-requests":
-                    return "محاولات كثيرة. انتظر قليلاً ثم حاول مجدداً.";
-
-                case "auth/network-request-failed":
-                    return "مشكلة في الاتصال بالإنترنت.";
-
-                default:
-                    return "حدث خطأ. حاول مرة أخرى.";
-            }
-        }
-
-        function showAuthMessage(message) {
-            authMessage.textContent = message;
-        }
-
-        function setAuthLoading(isLoading) {
-            loginButton.disabled = isLoading;
-            registerButton.disabled = isLoading;
-        }
     </script>
 </body>
 </html>
