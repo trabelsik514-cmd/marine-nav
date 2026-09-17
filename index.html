@@ -28,19 +28,19 @@
             font: inherit;
             border: 0;
             border-radius: 8px;
-            padding: 12px 18px;
+            padding: 10px 14px;
             cursor: pointer;
             color: white;
             background: var(--primary);
-            margin: 5px;
+            margin: 4px;
         }
 
         button:hover { opacity: 0.9; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
 
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
+        button.danger  { background: #c62828; }
+        button.warn    { background: #bd7500; }
+        button.success { background: #16803c; }
 
         /* شاشة البداية */
         #splash-screen {
@@ -93,38 +93,108 @@
         .top-bar {
             display: flex;
             align-items: center;
-            justify-content: center;
-            padding: 10px 14px;
+            justify-content: space-between;
+            padding: 8px 14px;
             color: white;
             background: var(--dark);
-            font-size: 18px;
+            font-size: 17px;
             font-weight: bold;
+        }
+
+        #gps-info {
+            font-size: 13px;
+            font-weight: normal;
+            color: #9fd8ea;
         }
 
         #map {
             flex: 1;
             width: 100%;
-            min-height: 300px;
+            min-height: 200px;
         }
 
         .controls {
-            padding: 10px;
+            padding: 8px;
             text-align: center;
             background: white;
         }
 
-        #weather-result {
-            max-width: 600px;
-            margin: 8px auto 4px;
-            padding: 10px;
+        .info-panel {
+            max-width: 700px;
+            margin: 6px auto;
+            padding: 8px 10px;
             border-radius: 10px;
             background: #eef7fa;
+            font-size: 14px;
             line-height: 1.8;
+            text-align: right;
         }
 
         .status-good   { color: #16803c; font-weight: bold; }
         .status-medium { color: #bd7500; font-weight: bold; }
         .status-bad    { color: #c62828; font-weight: bold; }
+
+        .tabs {
+            display: flex;
+            justify-content: center;
+            gap: 5px;
+        }
+
+        /* نوافذ */
+        .modal {
+            position: fixed;
+            inset: 0;
+            z-index: 10000;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 15px;
+        }
+
+        .modal.open { display: flex; }
+
+        .modal-box {
+            background: white;
+            border-radius: 12px;
+            padding: 18px;
+            width: 100%;
+            max-width: 480px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .modal-box h3 {
+            margin: 0 0 12px;
+            color: var(--dark);
+        }
+
+        .modal-box input, .modal-box textarea, .modal-box select {
+            width: 100%;
+            padding: 9px;
+            margin: 5px 0 10px;
+            border: 1px solid #bcd7e2;
+            border-radius: 8px;
+            font: inherit;
+        }
+
+        .list-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 9px;
+            margin: 6px 0;
+            border-radius: 8px;
+            background: #eef7fa;
+            font-size: 14px;
+        }
+
+        .list-item small { color: #54707d; }
+
+        .list-actions button { padding: 5px 10px; font-size: 12px; margin: 0; }
+
+        .empty { color: #7d97a3; text-align: center; padding: 15px; }
     </style>
 </head>
 
@@ -142,35 +212,157 @@
 
     <!-- شاشة التطبيق -->
     <section id="app-screen">
-        <div class="top-bar">Redline Fishing</div>
+        <div class="top-bar">
+            <span>Redline Fishing</span>
+            <span id="gps-info">📍 —</span>
+        </div>
 
         <div id="map"></div>
 
         <div class="controls">
-            <button id="locate-button" type="button">تحديد موقعي</button>
-            <button id="weather-button" type="button">جلب حالة البحر والطقس</button>
+            <div class="tabs">
+                <button id="locate-button" type="button">📍 موقعي</button>
+                <button id="add-spot-button" type="button">🐟 حفظ مكان صيد</button>
+                <button id="add-danger-button" type="button" class="danger">⚠️ منطقة خطر</button>
+                <button id="track-button" type="button" class="success">▶️ بدء التتبع</button>
+                <button id="weather-button" type="button">🌊 حالة البحر</button>
+                <button id="journal-button" type="button">📓 سجل الصيد</button>
+                <button id="spots-button" type="button">📋 أماكني</button>
+            </div>
 
-            <div id="weather-result">
-                اضغط على زر جلب حالة البحر والطقس.
+            <div class="info-panel" id="info-panel">
+                🎣 مرحباً! حدّد موقعك ثم استمتع بالصيد الآمن.
             </div>
         </div>
     </section>
 
+    <!-- نافذة حفظ مكان -->
+    <div class="modal" id="spot-modal">
+        <div class="modal-box">
+            <h3>🐟 حفظ مكان صيد</h3>
+            <label>اسم المكان:</label>
+            <input type="text" id="spot-name" placeholder="مثال: منطقة الصخور الشمالية">
+            <label>ملاحظة (اختياري):</label>
+            <textarea id="spot-note" rows="2" placeholder="نوع السمك، العمق، الطُعم..."></textarea>
+            <button class="success" id="save-spot">💾 حفظ</button>
+            <button class="danger" onclick="closeModal('spot-modal')">إلغاء</button>
+        </div>
+    </div>
+
+    <!-- نافذة منطقة خطر -->
+    <div class="modal" id="danger-modal">
+        <div class="modal-box">
+            <h3>⚠️ إضافة منطقة خطر</h3>
+            <label>نوع الخطر:</label>
+            <select id="danger-type">
+                <option value="🪨 صخور">🪨 صخور</option>
+                <option value="🚢 مرسى / قوارب">🚢 مرسى / قوارب</option>
+                <option value="🚫 منطقة ممنوعة">🚫 منطقة ممنوعة</option>
+                <option value="⚡ تيارات قوية">⚡ تيارات قوية</option>
+            </select>
+            <label>نصف قطر التحذير (بالمتر):</label>
+            <input type="number" id="danger-radius" value="300" min="50" max="5000">
+            <button class="danger" id="save-danger">💾 حفظ</button>
+            <button onclick="closeModal('danger-modal')">إلغاء</button>
+        </div>
+    </div>
+
+    <!-- نافذة سجل الصيد -->
+    <div class="modal" id="journal-modal">
+        <div class="modal-box">
+            <h3>📓 سجل الصيد</h3>
+            <div id="journal-list"></div>
+            <hr>
+            <label>نوع السمك:</label>
+            <input type="text" id="catch-species" placeholder="مثال: قاروص">
+            <label>الوزن (كغ):</label>
+            <input type="number" id="catch-weight" step="0.1" placeholder="2.5">
+            <label>ملاحظة:</label>
+            <input type="text" id="catch-note" placeholder="الطُعم، الطقس...">
+            <button class="success" id="save-catch">➕ إضافة صيد</button>
+            <button onclick="closeModal('journal-modal')">إغلاق</button>
+        </div>
+    </div>
+
+    <!-- نافذة الأماكن -->
+    <div class="modal" id="spots-modal">
+        <div class="modal-box">
+            <h3>📋 أماكن ومناطق محفوظة</h3>
+            <div id="spots-list"></div>
+            <button onclick="closeModal('spots-modal')">إغلاق</button>
+        </div>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
     <script>
+        /* ================= الحالة العامة ================= */
         const splashScreen = document.getElementById("splash-screen");
         const appScreen = document.getElementById("app-screen");
-        const locateButton = document.getElementById("locate-button");
-        const weatherButton = document.getElementById("weather-button");
-        const weatherResult = document.getElementById("weather-result");
+        const infoPanel = document.getElementById("info-panel");
+        const gpsInfo = document.getElementById("gps-info");
 
         let map = null;
         let userMarker = null;
-        let currentLatitude = 36.8;
-        let currentLongitude = 10.6;
+        let watchId = null;
+        let currentLat = 36.8, currentLon = 10.6;
+        let hasPosition = false;
 
-        /* فتح التطبيق بعد الشعار */
+        let launchPoint = null;          // نقطة الانطلاق
+        let trackPoints = [];            // نقاط المسار
+        let trackLine = null;
+        let tracking = false;
+        let trackStartTime = null;
+
+        let fishingSpots = JSON.parse(localStorage.getItem("rf_spots") || "[]");
+        let dangerZones = JSON.parse(localStorage.getItem("rf_dangers") || "[]");
+        let catchLog = JSON.parse(localStorage.getItem("rf_journal") || "[]");
+
+        /* ================= أدوات مساعدة ================= */
+        function saveData() {
+            localStorage.setItem("rf_spots", fishingSpots.map(s => ({...s, layer: undefined})).map(({layer, ...s}) => s));
+            localStorage.setItem("rf_dangers", dangerZones.map(({layer, ...d}) => d));
+            localStorage.setItem("rf_journal", JSON.stringify(catchLog));
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.remove("open");
+        }
+
+        function openModal(id) {
+            document.getElementById(id).classList.add("open");
+        }
+
+        /* المسافة بالأمتار بين نقطتين */
+        function distanceMeters(lat1, lon1, lat2, lon2) {
+            const R = 6371000;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2)**2 +
+                      Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+                      Math.sin(dLon/2)**2;
+            return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        }
+
+        /* الاتجاه (بوصلة) بين نقطتين */
+                function bearing(lat1, lon1, lat2, lon2) {
+            const φ1 = lat1 * Math.PI/180, φ2 = lat2 * Math.PI/180;
+            const Δλ = (lon2 - lon1) * Math.PI/180;
+            const y = Math.sin(Δλ) * Math.cos(φ2);
+            const x = Math.cos(φ1)*Math.sin(φ2) - Math.sin(φ1)*Math.cos(φ2)*Math.cos(Δλ);
+            const θ = Math.atan2(y, x) * 180 / Math.PI;
+            const directions = ["شمال","شمال شرق","شرق","جنوب شرق","جنوب","جنوب غرب","غرب","شمال غرب"];
+            const idx = Math.round(((θ + 360) % 360) / 45) % 8;
+            return directions[idx];
+        }
+
+        function formatTime(sec) {
+            const m = Math.floor(sec / 60);
+            const s = Math.round(sec % 60);
+            return `mد{m}دmد{s}ث`;
+        }
+
+        /* ================= شاشة البداية ================= */
         window.addEventListener("load", () => {
             setTimeout(() => {
                 splashScreen.classList.add("hide");
@@ -180,135 +372,412 @@
             }, 2200);
         });
 
-        /* تهيئة الخريطة */
+        /* ================= الخريطة ================= */
         function initializeMap() {
             if (map) return;
 
-            map = L.map("map").setView([currentLatitude, currentLongitude], 10);
+            map = L.map("map").setView([currentLat, currentLon], 11);
 
             L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
                 maxZoom: 19,
                 attribution: "&copy; OpenStreetMap contributors"
             }).addTo(map);
 
-            userMarker = createUserMarker(
-                [currentLatitude, currentLongitude],
-                "موقع الكاياك الحالي"
-            );
+            userMarker = createUserMarker([currentLat, currentLon], "موقع الكاياك الحالي");
+
+            redrawSpots();
+            redrawDangers();
+
+            /* ضغطة مطولة على الخريطة = حفظ مكان صيد سريع */
+            map.on("contextmenu", (e) => {
+                currentLat = e.latlng.lat;
+                currentLon = e.latlng.lng;
+                openModal("spot-modal");
+            });
         }
 
-        /* ماركر الكاياك بأيقونة إيموجي (لا تحتاج ملفات) */
-        function createUserMarker(position, popupText) {
-            const kayakIcon = L.divIcon({
+        function kayakIcon() {
+            return L.divIcon({
                 html: '<div style="font-size:34px;line-height:34px;text-align:center;">🛶</div>',
                 className: "",
                 iconSize: [34, 34],
                 iconAnchor: [17, 17],
                 popupAnchor: [0, -17]
             });
+        }
 
-            return L.marker(position, { icon: kayakIcon })
+        function createUserMarker(position, popupText) {
+            return L.marker(position, { icon: kayakIcon() })
                 .addTo(map)
                 .bindPopup(popupText);
         }
 
-        /* تحديد موقع المستخدم */
-        locateButton.addEventListener("click", () => {
-            if (!navigator.geolocation) {
-                alert("المتصفح لا يدعم تحديد الموقع.");
-                return;
-            }
+        /* ================= أماكن الصيد ================= */
+        function redrawSpots() {
+            fishingSpots.forEach(s => {
+                if (s.layer && map.hasLayer(s.layer)) map.removeLayer(s.layer);
+                s.layer = L.marker([s.lat, s.lon]).addTo(map)
+                    .bindPopup(`🐟 <b>s.name</b><br>{s.name}</b><br>s.name</b><br>{s.note || ""}<br><small>${s.date || ""}</small>`);
+            });
+        }
 
-            locateButton.disabled = true;
-            locateButton.textContent = "جارٍ تحديد الموقع...";
+        document.getElementById("add-spot-button").addEventListener("click", () => {
+            openModal("spot-modal");
+        });
+
+        document.getElementById("save-spot").addEventListener("click", () => {
+            const name = document.getElementById("spot-name").value.trim() || "مكان صيد";
+            const note = document.getElementById("spot-note").value.trim();
+
+            fishingSpots.push({
+                lat: currentLat,
+                lon: currentLon,
+                name: name,
+                note: note,
+                date: new Date().toLocaleDateString("ar")
+            });
+            saveData();
+            redrawSpots();
+
+            document.getElementById("spot-name").value = "";
+            document.getElementById("spot-note").value = "";
+            closeModal("spot-modal");
+
+            infoPanel.innerHTML = `✅ تم حفظ مكان الصيد: <b>${name}</b>`;
+        });
+
+        /* ================= مناطق الخطر + التنبيه ================= */
+        function redrawDangers() {
+            dangerZones.forEach(d => {
+                if (d.layer && map.hasLayer(d.layer)) map.removeLayer(d.layer);
+                d.layer = L.circle([d.lat, d.lon], {
+                    radius: d.radius,
+                    color: "#c62828",
+                    fillColor: "#c62828",
+                    fillOpacity: 0.25
+                }).addTo(map)
+                 .bindPopup(`⚠️ <b>d.type</b><br>اقترابأقلمن{d.type}</b><br>اقتراب أقل منd.type</b><br>اقترابأقلمن{d.radius}م خطير!`);
+            });
+        }
+
+        document.getElementById("add-danger-button").addEventListener("click", () => {
+            openModal("danger-modal");
+        });
+
+        document.getElementById("save-danger").addEventListener("click", () => {
+            const type = document.getElementById("danger-type").value;
+            const radius = parseInt(document.getElementById("danger-radius").value) || 300;
+
+            dangerZones.push({ lat: currentLat, lon: currentLon, type, radius });
+            saveData();
+            redrawDangers();
+            closeModal("danger-modal");
+
+            infoPanel.innerHTML = `⚠️ تم حفظ منطقة الخطر: <b>${type}</b>`;
+        });
+
+        /* فحص الاقتراب من مناطق الخطر */
+        function checkDangerZones() {
+            for (const d of dangerZones) {
+                const dist = distanceMeters(currentLat, currentLon, d.lat, d.lon);
+                if (dist <= d.radius) {
+                    infoPanel.innerHTML =
+                        `<span class="status-bad">⚠️ تحذير! أنت قريب من: ${d.type} — ابتعد فوراً!</span>`;
+                    if (navigator.vibrate) navigator.vibrate([300, 100, 300]);
+                    return;
+                }
+            }
+        }
+
+        /* ================= التتبع والمسافة ================= */
+        document.getElementById("track-button").addEventListener("click", () => {
+            if (!tracking) {
+                tracking = true;
+                launchPoint = { lat: currentLat, lon: currentLon };
+                trackPoints = [[currentLat, currentLon]];
+                trackStartTime = Date.now();
+
+                trackLine = L.polyline(trackPoints, {
+                    color: "#087ea4", weight: 4
+                }).addTo(map);
+
+                const btn = document.getElementById("track-button");
+                btn.textContent = "⏹️ إيقاف التتبع";
+                btn.classList.remove("success");
+                btn.classList.add("danger");
+
+                startWatch();
+            } else {
+                stopTracking();
+            }
+        });
+
+        function stopTracking() {
+            tracking = false;
+            stopWatch();
+
+            const btn = document.getElementById("track-button");
+            btn.textContent = "▶️ بدء التتبع";
+            btn.classList.add("success");
+            btn.classList.remove("danger");
+
+            const elapsed = (Date.now() - trackStartTime) / 1000;
+            let totalDist = 0;
+            for (let i = 1; i < trackPoints.length; i++) {
+                totalDist += distanceMeters(
+                    trackPoints[i-1][0], trackPoints[i-1][1],
+                    trackPoints[i][0], trackPoints[i][1]
+                );
+            }
+            const km = (totalDist / 1000).toFixed(2);
+            const speed = (totalDist / 1000 / (elapsed / 3600)).toFixed(1);
+
+            infoPanel.innerHTML =
+                `📈 <b>ملخص الرحلة:</b><br>` +
+                `المسافة: <b>${km} كم</b> | ` +
+                `المدة: <b>${formatTime(elapsed)}</b> | ` +
+                `متوسط السرعة: <b>${speed} كم/س</b>`;
+        }
+
+        /* ================= GPS المباشر ================= */
+        function startWatch() {
+            if (watchId) return;
+            watchId = navigator.geolocation.watchPosition(onPosition, onGpsError,
+                { enableHighAccuracy: true, timeout: 15000, maximumAge: 2000 });
+        }
+
+        function stopWatch() {
+            if (watchId) {
+                navigator.geolocation.clearWatch(watchId);
+                watchId = null;
+            }
+        }
+
+        function onPosition(position) {
+            currentLat = position.coords.latitude;
+            currentLon = position.coords.longitude;
+            hasPosition = true;
+
+            if (userMarker) map.removeLayer(userMarker);
+            userMarker = createUserMarker([currentLat, currentLon], "موقعك الحالي 🎣");
+
+            const accuracy = Math.round(position.coords.accuracy);
+            gpsInfo.textContent = `📍 currentLat.toFixed(4),{currentLat.toFixed(4)},currentLat.toFixed(4),{currentLon.toFixed(4)} (دقة ${accuracy}م)`;
+
+            if (tracking) {
+                trackPoints.push([currentLat, currentLon]);
+                if (trackLine) trackLine.setLatLngs(trackPoints);
+
+                /* المسافة عن نقطة الانطلاق */
+                const dist = distanceMeters(currentLat, currentLon, launchPoint.lat, launchPoint.lon);
+                const dir = bearing(launchPoint.lat, launchPoint.lon, currentLat, currentLon);
+                const elapsed = (Date.now() - trackStartTime) / 1000;
+
+                let safety = "";
+                if (dist > 2000) safety = `<span class="status-bad">⚠️ ابتعدت كثيراً عن الشاطئ!</span>`;
+                else if (dist > 1000) safety = `<span class="status-medium">⚡ احترس — مسافة كبيرة</span>`;
+                else safety = `<span class="status-good">✅ مسافة آمنة</span>`;
+
+                infoPanel.innerHTML =
+                    `🧭 المسافة عن نقطة الانطلاق: <b>${(dist/1000).toFixed(2)} كم</b> ` +
+                    `باتجاه <b>${dir}</b><br>` +
+                    `⏱️ مدة التجديف: <b>${formatTime(elapsed)}</b><br>` + safety;
+
+                checkDangerZones();
+            }
+        }
+
+        function onGpsError() {
+            gpsInfo.textContent = "📍 تعذر تحديد الموقع";
+        }
+
+        /* ================= زر موقعي ================= */
+        document.getElementById("locate-button").addEventListener("click", () => {
+            const btn = document.getElementById("locate-button");
+            btn.disabled = true;
+            btn.textContent = "⏳ جارٍ التحديد...";
 
             navigator.geolocation.getCurrentPosition(
                 (position) => {
-                    currentLatitude = position.coords.latitude;
-                    currentLongitude = position.coords.longitude;
+                    onPosition(position);
+                    map.setView([currentLat, currentLon], 14);
 
-                    const pos = [currentLatitude, currentLongitude];
+                    /* حفظ نقطة الانطلاق تلقائياً عند أول تحديد */
+                    if (!launchPoint) launchPoint = { lat: currentLat, lon: currentLon };
 
-                    map.setView(pos, 13);
+                    /* بدء التتبع المستمر بعد أول تحديد */
+                    startWatch();
 
-                    if (userMarker) map.removeLayer(userMarker);
-
-                    userMarker = createUserMarker(pos, "موقعك الحالي 🎣");
-
-                    locateButton.disabled = false;
-                    locateButton.textContent = "تحديد موقعي";
+                    btn.disabled = false;
+                    btn.textContent = "📍 موقعي";
+                    infoPanel.innerHTML = "✅ تم تحديد موقعك! التتبع المباشر يعمل الآن.";
                 },
                 () => {
                     alert("تعذر تحديد موقعك. تأكد من تفعيل خدمة الموقع.");
-                    locateButton.disabled = false;
-                    locateButton.textContent = "تحديد موقعي";
+                    btn.disabled = false;
+                    btn.textContent = "📍 موقعي";
                 },
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
             );
         });
 
-        /* جلب حالة البحر والطقس */
-        weatherButton.addEventListener("click", async () => {
-            weatherButton.disabled = true;
-            weatherButton.textContent = "جارٍ جلب البيانات...";
-            weatherResult.textContent = "جارٍ جلب البيانات، انتظر قليلاً...";
+        /* ================= حالة البحر (Open-Meteo مجاني بدون مفتاح) ================= */
+        document.getElementById("weather-button").addEventListener("click", () => {
+            const btn = document.getElementById("weather-button");
+            btn.disabled = true;
+            btn.textContent = "⏳ جارٍ الجلب...";
 
-            try {
-                const apiKey = "ضع_مفتاح_الطقس_هنا";
+            const url = `https://api.open-meteo.com/v1/forecast` +
+                `?latitude={currentLat}&longitude={currentLon}` +
+                `&current=wind_speed_10m,wind_direction_10m,temperature_2m` +
+                `&daily=sunrise,sunset&timezone=auto`;
 
-                const response = await fetch(
-                    "https://api.openweathermap.org/data/2.5/weather" +
-                    "?lat=" + currentLatitude +
-                    "&lon=" + currentLongitude +
-                    "&appid=" + apiKey +
-                    "&units=metric&lang=ar"
-                );
+            fetch(url)
+                .then(r => r.json())
+                .then(data => {
+                    const wind = data.current.wind_speed_10m;
+                    const windDir = data.current.wind_direction_10m;
+                    const temp = data.current.temperature_2m;
+                    const sunrise = data.daily.sunrise[0].split("T")[1];
+                    const sunset = data.daily.sunset[0].split("T")[1];
 
-                if (!response.ok) {
-                    throw new Error("فشل الاتصال بخدمة الطقس.");
-                }
+                    let safety, cls;
+                    if (wind < 15)      { safety = "✅ ظروف ممتازة للصيد"; cls = "status-good"; }
+                    else if (wind < 25) { safety = "⚡ ظروف مقبولة — احترس"; cls = "status-medium"; }
+                    else                { safety = "⚠️ خطير! يُنصح بعدم الخروج"; cls = "status-bad"; }
 
-                const data = await response.json();
+                    infoPanel.innerHTML =
+                        `🌊 <b>حالة البحر الآن:</b><br>` +
+                        `💨 الرياح: <b>windكم/س</b>(اتجاه{wind} كم/س</b> (اتجاهwindكم/س</b>(اتجاه{Math.round(windDir)}°)<br>` +
+                        `🌡️ الحرارة: <b>${temp}°م</b><br>` +
+                        `🌅 الفجر: sunrise∣🌇الغروب:{sunrise} | 🌇 الغروب:sunrise∣🌇الغروب:{sunset}<br>` +
+                        `<span class="cls">{cls}">cls">{safety}</span>`;
+                })
+                .catch(() => {
+                    infoPanel.innerHTML = `<span class="status-bad">❌ تعذر جلب حالة البحر. تحقق من الإنترنت.</span>`;
+                })
+                .finally(() => {
+                    btn.disabled = false;
+                    btn.textContent = "🌊 حالة البحر";
+                });
+        });
 
-                const temperature = Math.round(data.main.temp);
-                const windSpeed = data.wind.speed;
-                const description = data.weather[0].description;
+        /* ================= سجل الصيد ================= */
+        document.getElementById("journal-button").addEventListener("click", () => {
+            renderJournal();
+            openModal("journal-modal");
+        });
 
-                /* تقييم حالة البحر حسب سرعة الرياح */
-                let seaStatusText, seaStatusClass;
-
-                if (windSpeed < 5) {
-                    seaStatusText = "ممتازة ✅";
-                    seaStatusClass = "status-good";
-                } else if (windSpeed < 8) {
-                    seaStatusText = "متوسطة ⚠️";
-                    seaStatusClass = "status-medium";
-                } else {
-                    seaStatusText = "خطيرة ❌";
-                    seaStatusClass = "status-bad";
-                }
-
-                weatherResult.innerHTML =
-                    "📍 <strong>الموقع:</strong> " +
-                    currentLatitude.toFixed(3) + ", " +
-                    currentLongitude.toFixed(3) + "<br>" +
-                    "🌡️ <strong>الطقس:</strong> " + description + "<br>" +
-                    "🌡️ <strong>الحرارة:</strong> " + temperature + "°C<br>" +
-                    "💨 <strong>سرعة الرياح:</strong> " +
-                    windSpeed.toFixed(1) + " م/ث<br>" +
-                    "🌊 <strong>حالة البحر للكاياك:</strong> " +
-                    '<span class="' + seaStatusClass + '">' +
-                    seaStatusText + "</span>";
-
-                if (windSpeed >= 8) {
-                    alert("⚠️ تحذير: حالة البحر خطيرة حالياً. يُنصح بعدم الخروج بالكاياك.");
-                }
-            } catch (error) {
-                weatherResult.textContent = "تعذر جلب بيانات الطقس. حاول مرة أخرى.";
-            } finally {
-                weatherButton.disabled = false;
-                weatherButton.textContent = "جلب حالة البحر والطقس";
+        function renderJournal() {
+            const list = document.getElementById("journal-list");
+            if (catchLog.length === 0) {
+                list.innerHTML = `<div class="empty">لا يوجد صيد مسجل بعد 🎣</div>`;
+                return;
             }
+            list.innerHTML = catchLog.map((c, i) =>
+                `<div class="list-item">
+                    <div>🐟 <b>c.species</b>—{c.species}</b> —c.species</b>—{c.weight                } كغ` || `🐟 <b>${c.species}</b>`}
+                    <small>c.date—{c.date} —c.date—{c.note || "بدون ملاحظة"}</small>
+                    </div>
+                    <button class="danger" onclick="deleteCatch(${i})">🗑️</button>
+                </div>`;
+            }).join("");
+        }
+
+        document.getElementById("save-catch").addEventListener("click", () => {
+            const species = document.getElementById("catch-species").value.trim();
+            if (!species) { alert("أدخل نوع السمك!"); return; }
+
+            catchLog.unshift({
+                species: species,
+                weight: document.getElementById("catch-weight").value,
+                note: document.getElementById("catch-note").value.trim(),
+                place: hasPosition ? `currentLat.toFixed(3),{currentLat.toFixed(3)},currentLat.toFixed(3),{currentLon.toFixed(3)}` : "",
+                date: new Date().toLocaleDateString("ar")
+            });
+            saveData();
+            renderJournal();
+
+            document.getElementById("catch-species").value = "";
+            document.getElementById("catch-weight").value = "";
+            document.getElementById("catch-note").value = "";
+
+            infoPanel.innerHTML = `📓 تم تسجيل الصيد: <b>${species}</b>`;
+        });
+
+        function deleteCatch(i) {
+            catchLog.splice(i, 1);
+            saveData();
+            renderJournal();
+        }
+
+        /* ================= قائمة الأماكن ================= */
+        document.getElementById("spots-button").addEventListener("click", () => {
+            renderSpots();
+            openModal("spots-modal");
+        });
+
+        function renderSpots() {
+            const list = document.getElementById("spots-list");
+
+            const spotItems = fishingSpots.map((s, i) =>
+                `<div class="list-item">
+                    <div>🐟 <b>s.name</b><br><small>{s.name}</b><br><small>s.name</b><br><small>{s.note || ""} — ${s.date}</small></div>
+                    <div class="list-actions">
+                        <button class="success" onclick="gotoSpot(s.lat,{s.lat},s.lat,{s.lon})">🧭</button>
+                        <button class="danger" onclick="deleteSpot(${i})">🗑️</button>
+                    </div>
+                </div>`).join("");
+
+            const dangerItems = dangerZones.map((d, i) =>
+                `<div class="list-item">
+                    <div>⚠️ <b>d.type</b><br><small>نطاق{d.type}</b><br><small>نطاقd.type</b><br><small>نطاق{d.radius}م</small></div>
+                    <div class="list-actions">
+                        <button class="success" onclick="gotoSpot(d.lat,{d.lat},d.lat,{d.lon})">🧭</button>
+                        <button class="danger" onclick="deleteDanger(${i})">🗑️</button>
+                    </div>
+                </div>`).join("");
+
+            if (!spotItems && !dangerItems) {
+                list.innerHTML = `<div class="empty">لا توجد أماكن محفوظة بعد.</div>`;
+                return;
+            }
+            list.innerHTML =
+                (spotItems ? `<b>🐟 أماكن الصيد:</b><br>${spotItems}` : "") +
+                (dangerItems ? `<b>⚠️ مناطق الخطر:</b><br>${dangerItems}` : "");
+        }
+
+        /* الانتقال إلى مكان على الخريطة */
+        function gotoSpot(lat, lon) {
+            closeModal("spots-modal");
+            map.setView([lat, lon], 15);
+        }
+
+        function deleteSpot(i) {
+            if (!confirm("حذف هذا المكان؟")) return;
+            const s = fishingSpots[i];
+            if (s.layer) map.removeLayer(s.layer);
+            fishingSpots.splice(i, 1);
+            saveData();
+            renderSpots();
+            redrawSpots();
+        }
+
+        function deleteDanger(i) {
+            if (!confirm("حذف منطقة الخطر هذه؟")) return;
+            const d = dangerZones[i];
+            if (d.layer) map.removeLayer(d.layer);
+            dangerZones.splice(i, 1);
+            saveData();
+            renderSpots();
+            redrawDangers();
+        }
+
+        /* النافذة تُغلق عند النقر خارجها */
+        document.querySelectorAll(".modal").forEach(m => {
+            m.addEventListener("click", (e) => {
+                if (e.target === m) m.classList.remove("open");
+            });
         });
     </script>
 </body>
