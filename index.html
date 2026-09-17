@@ -209,7 +209,7 @@
   function updateRoute(){
     if (!userPos || !destination) return;
     if (routeLine) routeLine.setLatLngs([userPos, destination]);
-    else routeLine = L.polyline([userPos, destination], {color:'#00d4ff', weight:4, dashArray:'10،10'});
+    else routeLine = L.polyline([userPos, destination], {color:'#00d4ff', weight:4, dashArray:'10,10'});
     routeLine.addTo(map);
     }
 
