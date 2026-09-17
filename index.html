@@ -3,22 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>التطبيق البحري - Ox Alpha</title>
+<title>التطبيق البحري</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
   html, body { margin:0; padding:0; font-family: sans-serif; }
   #map { width:100%; height:500px; border-radius:10px; }
 
-  /* شريط المعلومات السفلي */
   #infoBar {
     background:#263238; color:#fff; padding:10px; margin-top:5px;
     display:flex; justify-content:space-around; border-radius:10px;
     text-align:center;
   }
   #infoBar b { font-size:1.2em; }
-  #infoBar div { cursor:pointer; }
+  #speedBox { cursor:pointer; }
 
-  /* شريط أزرار الخرائط */
   #layerBar {
     position:absolute; top:10px; left:10px; z-index:1000;
     display:flex; flex-direction:column; gap:5px;
@@ -29,14 +27,12 @@
   }
   #layerBar button.active { background:#0288d1; }
 
-  /* زر إلغاء الوجهة */
   #clearDest {
     position:absolute; top:10px; right:10px; z-index:1000;
     background:#c62828; color:#fff; border:none; padding:8px 12px;
     border-radius:8px; cursor:pointer; display:none;
   }
 
-  /* سهم القارب الدوار */
   .boat-arrow {
     width:0; height:0;
     border-left:12px solid transparent;
@@ -53,8 +49,7 @@
 
   <div id="layerBar">
     <button id="btnSat" class="active">🛰️ قمر صناعي</button>
-    <button id="btnSea">🌊 خريطة بحرية</button>
-    <button id="btnStreet">🗺️ عادية</button>
+    <button id="btnSea">🗺️ عادية</button>
     <button id="btnDepth">📊 الأعماق</button>
   </div>
 
@@ -68,7 +63,7 @@
   <div>🧭<br><b id="bearing">--°</b></div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">>
 <script>
 (function(){
   'use strict';
@@ -76,37 +71,39 @@
   /* ================= الخريطة ================= */
   var map = L.map('map').setView([36.8700, 10.3480], 14);
 
-  var layers = {
-    sat: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {attribution:'Esri'}),
-    sea: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'OSM'}),
-    street: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'OSM'})
-  };
+  var satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {attribution:'Esri'});
+  var streetLayer = L.tileLayer('httpstile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'OSM'});
   var seamarkLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png');
-  layers.sat.addTo(map);
+
+  satLayer.addTo(map);
   seamarkLayer.addTo(map);
 
-  /* طبقة الأعماق (خطوط العمق البحرية) */
-  var depthLayer = L.tileLayer('https://tiles.openseamap.org/depth/{z}/{x}/{y}.png');
+  var depthLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png');
   var depthOn = false;
 
-  /* تبديل طبقات الخريطة */
-  var btns = { btnSat:'sat', btnSea:'sea', btnStreet:'street' };
-  Object.keys(btns).forEach(function(id){
-    document.getElementById(id).onclick = function(){
-      Object.values(layers).forEach(function(l){ map.removeLayer(l); });
-      layers[btns[id]].addTo(map);
-      seamarkLayer.addTo(map);
-      if (depthOn) depthLayer.addTo(map);
-      document.querySelectorAll('#layerBar button').forEach(function(b,i){
-        b.classList.toggle('active', b.id === id);
-      });
-    };
-  });
+  function showLayer(show, hide) {
+    map.removeLayer(hide);
+    show.addTo(map);
+    seamarkLayer.addTo(map);
+    if (depthOn) depthLayer.addTo(map);
+  }
+
+  document.getElementById('btnSat').onclick = function(){
+    showLayer(satLayer, streetLayer);
+    this.classList.add('active');
+    document.getElementById('btnSea').classList.remove('active');
+  };
+
+  document.getElementById('btnSea').onclick = function(){
+    showLayer(streetLayer, satLayer);
+    this.classList.add('active');
+    document.getElementById('btnSat').classList.remove('active');
+  };
 
   document.getElementById('btnDepth').onclick = function(){
     depthOn = !depthOn;
     this.classList.toggle('active', depthOn);
-    depthOn ? depthLayer.addTo(map) : map.removeLayer(depthLayer);
+    if (depthOn) { depthLayer.addTo(map); } else { map.removeLayer(depthLayer); }
   };
 
   /* ================= الحالة ================= */
@@ -120,9 +117,7 @@
       var s = JSON.parse(saved);
       setDestination(L.latLng(s.lat, s.lng));
     }
-  } catch(e){}
-
-  /* ================= أدوات حسابية ================= */
+  } catch(e){  /* =================وات حسابية ================= */
   function haversine(lat1, lon1, lat2, lon2) {
     var R = 6371000, rad = function(d){ return d * Math.PI / 180; };
     var dLat = rad(lat2-lat1), dLon = rad(lon2-lon1);
@@ -135,7 +130,7 @@
     var rad = function(d){ return d * Math.PI / 180; };
     var y = Math.sin(rad(lon2-lon1)) * Math.cos(rad(lat2));
     var x = Math.cos(rad(lat1))*Math.sin(rad(lat2)) -
-            Math.sin(rad(lat1))*Math.cos(rad(lat2))*Math.cos(rad(lon2-lon1));
+ Math.sin(rad(lat1))*Math.cos(rad(lat2))*Math.cos(rad(lon2-lon1));
     return (Math.atan2(y, x) * 180/Math.PI + 360) % 360;
   }
 
@@ -151,11 +146,9 @@
     document.getElementById('distance').textContent =
       d >= 1000 ? (d/1000).toFixed(2)+' كم' : d.toFixed(0)+' م';
 
-    /* الاتجاه نحو الوجهة */
     var brg = bearing(userPos.lat, userPos.lng, destination.lat, destination.lng);
     document.getElementById('bearing').textContent = Math.round(brg) + '°';
 
-    /* الوقت المقدر - تسارع مع السرعة */
     if (lastSpeed > 0.25) {
       var mins = Math.round(d / lastSpeed / 60);
       document.getElementById('time').textContent =
@@ -194,8 +187,8 @@
   };
 
   /* ================= تبديل وحدة السرعة ================= */
-  var speedUnit = 'kmh'; // kmh أو knots
-  document.getElementById('speedBox').onclick = function(){
+  var speedUnit = 'h';
+  document.getElementByIdspeedBox').onclick = function(){
     speedUnit = (speedUnit === 'kmh') ? 'knots' : 'kmh';
     document.getElementById('speedUnit').textContent =
       speedUnit === 'kmh' ? 'كم/س' : 'عقدة';
@@ -212,26 +205,27 @@
     navigator.geolocation.watchPosition(function(pos){
       userPos = L.latLng(pos.coords.latitude, pos.coords.longitude);
 
-      /* التحقق من صلاحية السرعة (بعض الأجهزة تعطي -1 أو null) */
       var s = pos.coords.speed;
       lastSpeed = (s !== null && s !== undefined && s >= 0) ? s : 0;
 
-      /* حساب السرعة يدوياً إذا لم يوفرها الجهاز */
-      if (lastSpeed === 0 && prevPos) {
-        var dt = (.timestamp - prevPos.t) / 1000;
-        if (dt > 0) {
-          var dd = haversine(prevPos.lat, prevPos.lng, userPos.lat, userPos.lng);
+      /* سرعة احتياطية محسوبة يدوياً - تم تصحيح الخطأ هنا */
+      if (lastSpeed ===  && prevPos {
+ var dt = (pos.timestamp - prevPos.t) / 1000;
+ if (dt > 0) {
+          var dd = haversine(prevPos, prevPos.lng, userPos, userPos.lng);
           if (dd / dt > 0.3) lastSpeed = dd / dt;
         }
       }
       prevPos = { lat:userPos.lat, lng:userPos.lng, t:pos.timestamp };
 
-      /* سهم القارب الدوار حسب اتجاه الحركة */
+      /* سهم القارب الدوار نحو الوجهة */
       var rot = 0;
-      if (destMarker && userPos) rot = bearing(userPos.lat, userPos.lng, destMarker.lat, destMarker.lng);
+      if (destination && userPos) {
+        rot = bearing(userPos.lat, userPos.lng, destination.lat, destination.lng);
+      }
 
       var icon = L.divIcon({
-        html: '<div class="boat-arrow" style="transform:rotate('+rot+'deg);"></div>',
+        html: '<div class="boat-arrow" style="transform:rotate(' + rot + 'deg);"></div>',
         iconSize: [24,26], iconAnchor: [12,13], className: ''
       });
 
@@ -241,7 +235,7 @@
       updateSpeedDisplay();
       updateRoute();
 
-      /* تحريك الخريطة فقط إذا خرج القارب من الشاشة */
+      /* متابعة القارب فقط عند خروجه من الشاشة */
       if (!map.getBounds().pad(0.2).contains(userPos)) {
         map.panTo(userPos);
       } else if (map.getZoom() < 14 && !destMarker) {
@@ -249,11 +243,9 @@
       }
     }, function(err){
       console.log('GPS: ' + err.message);
-      alert('تعذر الوصول إلى GPS: ' + err.message);
     }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 });
-  } else {
-    alert('متصفحك لا يدعم تحديد الموقع الجغرافي');
   }
+
 })();
 </script>
 </body>
