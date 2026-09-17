@@ -1,66 +1,260 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <title>تطبيق الملاحة البحرية</title>
-    <!-- استدعاء مكتبة Leaflet للخرائط -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <style>
-        body { margin: 0; padding: 0; font-family: sans-serif; }
-        #map { height: 100vh; width: 100%; }
-        
-        /* تصميم واجهة البيانات فوق الخريطة */
-        .ui-overlay {
-            position: absolute;
-            bottom: 20px;
-            left: 20px;
-            right: 20px;
-            background: rgba(255, 255, 255, 0.9);
-            padding: 15px;
-            border-radius: 10px;
-            display: flex;
-            justify-content: space-around;
-            z-index: 1000;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-        .metric { text-align: center; }
-        .value { font-size: 20px; font-weight: bold; color: #064B66; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>التطبيق البحري - Ox Alpha</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<style>
+  html, body { margin:0; padding:0; font-family: sans-serif; }
+  #map { width:100%; height:500px; border-radius:10px; }
+
+  /* شريط المعلومات السفلي */
+  #infoBar {
+    background:#263238; color:#fff; padding:10px; margin-top:5px;
+    display:flex; justify-content:space-around; border-radius:10px;
+    text-align:center;
+  }
+  #infoBar b { font-size:1.2em; }
+  #infoBar div { cursor:pointer; }
+
+  /* شريط أزرار الخرائط */
+  #layerBar {
+    position:absolute; top:10px; left:10px; z-index:1000;
+    display:flex; flex-direction:column; gap:5px;
+  }
+  #layerBar button {
+    background:#263238; color:#fff; border:none; padding:8px 12px;
+    border-radius:8px; cursor:pointer; font-size:14px;
+  }
+  #layerBar button.active { background:#0288d1; }
+
+  /* زر إلغاء الوجهة */
+  #clearDest {
+    position:absolute; top:10px; right:10px; z-index:1000;
+    background:#c62828; color:#fff; border:none; padding:8px 12px;
+    border-radius:8px; cursor:pointer; display:none;
+  }
+
+  /* سهم القارب الدوار */
+  .boat-arrow {
+    width:0; height:0;
+    border-left:12px solid transparent;
+    border-right:12px solid transparent;
+    border-bottom:26px solid #ff5722;
+    filter: drop-shadow(0 0 3px rgba(0,0,0,.6));
+  }
+</style>
 </head>
 <body>
 
-    <div id="map"></div>
+<div style="position:relative;">
+  <div id="map"></div>
 
-    <div class="ui-overlay">
-        <div class="metric">
-            <div>السرعة</div>
-            <div class="value">8.4 عقدة</div>
-        </div>
-        <div class="metric">
-            <div>الاتجاه</div>
-            <div class="value">045°</div>
-        </div>
-    </div>
+  <div id="layerBar">
+    <button id="btnSat" class="active">🛰️ قمر صناعي</button>
+    <button id="btnSea">🌊 خريطة بحرية</button>
+    <button id="btnStreet">🗺️ عادية</button>
+    <button id="btnDepth">📊 الأعماق</button>
+  </div>
 
-    <script>
-        // إعداد الخريطة
-        var map = L.map('map').setView([36.8065, 10.1815], 13);
+  <button id="clearDest">✖ إلغاء الوجهة</button>
+</div>
 
-        // إضافة طبقة الخريطة (OpenStreetMap)
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap contributors'
-        }).addTo(map);
+<div id="infoBar">
+  <div id="speedBox">⚡<br><b id="speed">0.0</b> <span id="speedUnit">كم/س</span></div>
+  <div>📏<br><b id="distance">--</b></div>
+  <div>⏱️<br><b id="time">--:--</b></div>
+  <div>🧭<br><b id="bearing">--°</b></div>
+</div>
 
-        // إضافة أيقونة القارب (علامة)
-        var boatIcon = L.divIcon({
-            html: '<div style="font-size: 30px;">⛵</div>',
-            className: 'custom-div-icon'
-        });
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+  'use strict';
 
-        L.marker([36.8065, 10.1815], {icon: boatIcon}).addTo(map)
-            .bindPopup('موقعي الحالي');
-    </script>
+  /* ================= الخريطة ================= */
+  var map = L.map('map').setView([36.8700, 10.3480], 14);
+
+  var layers = {
+    sat: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {attribution:'Esri'}),
+    sea: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'OSM'}),
+    street: L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'OSM'})
+  };
+  var seamarkLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png');
+  layers.sat.addTo(map);
+  seamarkLayer.addTo(map);
+
+  /* طبقة الأعماق (خطوط العمق البحرية) */
+  var depthLayer = L.tileLayer('https://tiles.openseamap.org/depth/{z}/{x}/{y}.png');
+  var depthOn = false;
+
+  /* تبديل طبقات الخريطة */
+  var btns = { btnSat:'sat', btnSea:'sea', btnStreet:'street' };
+  Object.keys(btns).forEach(function(id){
+    document.getElementById(id).onclick = function(){
+      Object.values(layers).forEach(function(l){ map.removeLayer(l); });
+      layers[btns[id]].addTo(map);
+      seamarkLayer.addTo(map);
+      if (depthOn) depthLayer.addTo(map);
+      document.querySelectorAll('#layerBar button').forEach(function(b,i){
+        b.classList.toggle('active', b.id === id);
+      });
+    };
+  });
+
+  document.getElementById('btnDepth').onclick = function(){
+    depthOn = !depthOn;
+    this.classList.toggle('active', depthOn);
+    depthOn ? depthLayer.addTo(map) : map.removeLayer(depthLayer);
+  };
+
+  /* ================= الحالة ================= */
+  var userMarker = null, destMarker = null, routeLine = null;
+  var destination = null, userPos = null, lastSpeed = 0, prevPos = null;
+
+  /* استرجاع الوجهة المحفوظة */
+  try {
+    var saved = localStorage.getItem('dest');
+    if (saved) {
+      var s = JSON.parse(saved);
+      setDestination(L.latLng(s.lat, s.lng));
+    }
+  } catch(e){}
+
+  /* ================= أدوات حسابية ================= */
+  function haversine(lat1, lon1, lat2, lon2) {
+    var R = 6371000, rad = function(d){ return d * Math.PI / 180; };
+    var dLat = rad(lat2-lat1), dLon = rad(lon2-lon1);
+    var a = Math.sin(dLat/2)*Math.sin(dLat/2) +
+            Math.cos(rad(lat1))*Math.cos(rad(lat2))*Math.sin(dLon/2)*Math.sin(dLon/2);
+    return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+
+  function bearing(lat1, lon1, lat2, lon2) {
+    var rad = function(d){ return d * Math.PI / 180; };
+    var y = Math.sin(rad(lon2-lon1)) * Math.cos(rad(lat2));
+    var x = Math.cos(rad(lat1))*Math.sin(rad(lat2)) -
+            Math.sin(rad(lat1))*Math.cos(rad(lat2))*Math.cos(rad(lon2-lon1));
+    return (Math.atan2(y, x) * 180/Math.PI + 360) % 360;
+  }
+
+  /* ================= تحديث المسار ================= */
+  function updateRoute() {
+    if (!userPos || !destination) return;
+
+    var pts = [userPos, destination];
+    if (routeLine) routeLine.setLatLngs(pts);
+    else routeLine = L.polyline(pts, {color:'#0288d1', weight:4, dashArray:'8,8'}).addTo(map);
+
+    var d = haversine(userPos.lat, userPos.lng, destination.lat, destination.lng);
+    document.getElementById('distance').textContent =
+      d >= 1000 ? (d/1000).toFixed(2)+' كم' : d.toFixed(0)+' م';
+
+    /* الاتجاه نحو الوجهة */
+    var brg = bearing(userPos.lat, userPos.lng, destination.lat, destination.lng);
+    document.getElementById('bearing').textContent = Math.round(brg) + '°';
+
+    /* الوقت المقدر - تسارع مع السرعة */
+    if (lastSpeed > 0.25) {
+      var mins = Math.round(d / lastSpeed / 60);
+      document.getElementById('time').textContent =
+        mins >= 60 ? Math.floor(mins/60)+'س '+(mins%60)+'د' : mins+' د';
+    } else {
+      document.getElementById('time').textContent = '--:--';
+    }
+  }
+
+  /* ================= الوجهة ================= */
+  function setDestination(latlng) {
+    destination = latlng;
+    if (destMarker) destMarker.setLatLng(latlng);
+    else destMarker = L.marker(latlng, {
+      icon: L.divIcon({ html:'<div style="font-size:32px;">🏁</div>',
+                        iconSize:[32,32], iconAnchor:[16,32], className:'' })
+    }).addTo(map);
+    document.getElementById('clearDest').style.display = 'block';
+    updateRoute();
+  }
+
+  map.on('click', function(e){
+    setDestination(e.latlng);
+    try { localStorage.setItem('dest', JSON.stringify(e.latlng)); } catch(err){}
+  });
+
+  document.getElementById('clearDest').onclick = function(){
+    destination = null;
+    if (destMarker) { map.removeLayer(destMarker); destMarker = null; }
+    if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+    this.style.display = 'none';
+    document.getElementById('distance').textContent = '--';
+    document.getElementById('time').textContent = '--:--';
+    document.getElementById('bearing').textContent = '--°';
+    try { localStorage.removeItem('dest'); } catch(err){}
+  };
+
+  /* ================= تبديل وحدة السرعة ================= */
+  var speedUnit = 'kmh'; // kmh أو knots
+  document.getElementById('speedBox').onclick = function(){
+    speedUnit = (speedUnit === 'kmh') ? 'knots' : 'kmh';
+    document.getElementById('speedUnit').textContent =
+      speedUnit === 'kmh' ? 'كم/س' : 'عقدة';
+    updateSpeedDisplay();
+  };
+
+  function updateSpeedDisplay() {
+    var v = speedUnit === 'kmh' ? lastSpeed * 3.6 : lastSpeed * 1.94384;
+    document.getElementById('speed').textContent = v.toFixed(1);
+  }
+
+  /* ================= تتبع GPS ================= */
+  if (navigator.geolocation) {
+    navigator.geolocation.watchPosition(function(pos){
+      userPos = L.latLng(pos.coords.latitude, pos.coords.longitude);
+
+      /* التحقق من صلاحية السرعة (بعض الأجهزة تعطي -1 أو null) */
+      var s = pos.coords.speed;
+      lastSpeed = (s !== null && s !== undefined && s >= 0) ? s : 0;
+
+      /* حساب السرعة يدوياً إذا لم يوفرها الجهاز */
+      if (lastSpeed === 0 && prevPos) {
+        var dt = (.timestamp - prevPos.t) / 1000;
+        if (dt > 0) {
+          var dd = haversine(prevPos.lat, prevPos.lng, userPos.lat, userPos.lng);
+          if (dd / dt > 0.3) lastSpeed = dd / dt;
+        }
+      }
+      prevPos = { lat:userPos.lat, lng:userPos.lng, t:pos.timestamp };
+
+      /* سهم القارب الدوار حسب اتجاه الحركة */
+      var rot = 0;
+      if (destMarker && userPos) rot = bearing(userPos.lat, userPos.lng, destMarker.lat, destMarker.lng);
+
+      var icon = L.divIcon({
+        html: '<div class="boat-arrow" style="transform:rotate('+rot+'deg);"></div>',
+        iconSize: [24,26], iconAnchor: [12,13], className: ''
+      });
+
+      if (userMarker) userMarker.setLatLng(userPos).setIcon(icon);
+      else userMarker = L.marker(userPos, {icon: icon}).addTo(map);
+
+      updateSpeedDisplay();
+      updateRoute();
+
+      /* تحريك الخريطة فقط إذا خرج القارب من الشاشة */
+      if (!map.getBounds().pad(0.2).contains(userPos)) {
+        map.panTo(userPos);
+      } else if (map.getZoom() < 14 && !destMarker) {
+        map.setView(userPos, 14);
+      }
+    }, function(err){
+      console.log('GPS: ' + err.message);
+      alert('تعذر الوصول إلى GPS: ' + err.message);
+    }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 });
+  } else {
+    alert('متصفحك لا يدعم تحديد الموقع الجغرافي');
+  }
+})();
+</script>
 </body>
 </html>
