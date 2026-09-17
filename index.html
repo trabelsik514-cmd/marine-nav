@@ -2,58 +2,40 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <title>التطبيق البحري</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
 <style>
-  html, body {
-    margin:0; padding:0; height:100%;
-    font-family: sans-serif;
-    background:#263238;
-  }
+  html, body { margin:0; padding:0; height:100%; font-family:sans-serif; background:#263238; }
+  #mapWrap { position:relative; width:100%; height:calc(100vh - 200px); min-height:300px; }
+  #map { width:100%; height:100%; background:#90a4ae; }
 
-  /* حاوية الخريطة تملأ الشاشة عدا الشريط السفلي */
-  #mapWrap {
-    position:relative;
-    width:100%;
-    height:calc(100vh - 130px);
-    min-height:300px;
-  }
-  #map {
-    width:100%; height:100%;
-    background:#90a4ae; /* لون مؤقت قبل تحميل البلاطات */
-  }
-
-  /* شريط أزرار الخرائط */
-  #layerBar {
-    position:absolute; top:10px; left:10px; z-index:1000;
-    display:flex; flex-direction:column; gap:5px;
-  }
-  #layerBar button {
+  #layerBar { position:absolute; top:10px; left:10px; z-index:1000; display:flex; flex-direction:column; gap:5px; }
+  #layerBar button, #btnSeaInfo {
     background:#263238; color:#fff; border:none; padding:8px 12px;
-    border-radius:8px; cursor:pointer; font-size:14px;
-    box-shadow:0 2px 5px rgba(0,0,0,.4);
+    border-radius:8px; cursor:pointer; font-size:14px; box-shadow:0 2px 5px rgba(0,0,0,.4);
   }
   #layerBar button.active { background:#0288d1; }
+  #btnSeaInfo { position:absolute; top:125px; left:10px; z-index:1000; background:#0288d1; }
 
-  /* زر إلغاء الوجهة */
   #clearDest {
     position:absolute; top:10px; right:10px; z-index:1000;
     background:#c62828; color:#fff; border:none; padding:8px 12px;
     border-radius:8px; cursor:pointer; display:none;
-    box-shadow:0 2px 5px rgba(0,0,0,.4);
   }
 
-  /* شريط المعلومات السفلي */
-  #infoBar {
-    background:#263238; color:#fff; padding:10px; margin-top:5px;
-    display:flex; justify-content:space-around; border-radius:10px;
-    text-align:center;
-  }
-  #infoBar b { font-size:1.2em; }
+  .panel { background:#263238; color:#fff; padding:8px; margin-top:5px; border-radius:10px; text-align:center; }
+  #infoBar { display:flex; justify-content:space-around; }
+  #infoBar b, #seaRow b { font-size:1.1em; }
   #speedBox { cursor:pointer; }
 
-  /* سهم القارب */
+  #seaCard { display:none; }
+  #seaCard h3 { margin:0 0 6px; font-size:15px; color:#4fc3f7; }
+  #seaRow { display:flex; justify-content:space-around; }
+  #seaRow b { display:block; }
+  #seaRow span { font-size:12px; color:#b0bec5; }
+  #seaState { margin-top:6px; font-size:14px; }
+
   .boat-arrow {
     width:0; height:0;
     border-left:12px solid transparent;
@@ -67,21 +49,30 @@
 
 <div id="mapWrap">
   <div id="map"></div>
-
   <div id="layerBar">
     <button id="btnSat" class="active">🛰️ قمر صناعي</button>
     <button id="btnStreet">🗺️ عادية</button>
     <button id="btnDepth">📊 الأعماق</button>
   </div>
-
+  <button id="btnSeaInfo">🌊 حالة البحر</button>
   <button id="clearDest">✖ إلغاء الوجهة</button>
 </div>
 
-<div id="infoBar">
+<div id="infoBar" class="panel">
   <div id="speedBox">⚡<br><b id="speed">0.0</b> <span id="speedUnit">كم/س</span></div>
   <div>🧭<br><b id="bearing">--°</b></div>
   <div>📏<br><b id="distance">--</b></div>
   <div>⏱️<br><b id="time">--:--</b></div>
+</div>
+
+<div id="seaCard" class="panel">
+  <h3>🌊 حالة البحر</h3>
+  <div id="seaRow">
+    <div><b id="waveHeight">--</b><span>الموج (م)</span></div>
+    <div><b id="waveDir">--</b><span>اتجاه الموج</span></div>
+    <div><b id="wavePeriod">--</b><span>الفترة (ث)</span></div>
+  </div>
+  <div id="seaState">--</div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
@@ -90,105 +81,79 @@
   'use strict';
 
   /* ================= الخريطة ================= */
-  var map = L.map('map', { zoomControl: true }).setView([36.8700, 10.3480], 14);
+  var map = L.map('map').setView([36.87, 10.348], 14);
 
-  var satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {attribution:'Esri', maxZoom: 18});
-  var streetLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {attribution:'OSM', maxZoom: 19});
-  var seamarkLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {maxZoom: 18});
-  var depthLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {maxZoom: 18});
-  var depthOn = false;
+  var satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {maxZoom:18});
+  var streetLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19});
+  var seamarkLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {maxZoom:18});
 
   satLayer.addTo(map);
   seamarkLayer.addTo(map);
 
-  function switchLayer(show, hide, btn) {
-    map.removeLayer(hide);
-    show.addTo(map);
-    seamarkLayer.addTo(map);
+  function switchLayer(show, hide, btn){
+    map.removeLayer(hide); show.addTo(map); seamarkLayer.addTo(map);
     if (depthOn) depthLayer.addTo(map);
-    document.querySelectorAll('#layerBar button').forEach(function(b){
-      b.classList.remove('active');
-    });
+    document.querySelectorAll('#layerBar button').forEach(function(b){ b.classList.remove('active'); });
     btn.classList.add('active');
   }
 
-  document.getElementById('btnSat').onclick = function(){
-    switchLayer(satLayer, streetLayer, this);
-  };
+  var depthOn = false;
+  var depthLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', {maxZoom:18});
 
-  document.getElementById('btnStreet').onclick = function(){
-    switchLayer(streetLayer, satLayer, this);
-  };
-
+  document.getElementById('btnSat').onclick = function(){ switchLayer(satLayer, streetLayer, this); };
+  document.getElementById('btnStreet').onclick = function(){ switchLayer(streetLayer, satLayer, this); };
   document.getElementById('btnDepth').onclick = function(){
     depthOn = !depthOn;
     this.classList.toggle('active', depthOn);
-    if (depthOn) depthLayer.addTo(map);
-    else map.removeLayer(depthLayer);
+    depthOn ? depthLayer.addTo(map) : map.removeLayer(depthLayer);
   };
 
   /* ================= الحالة ================= */
-  var userMarker = null, destMarker = null, routeLine = null;
-  var destination = null, userPos = null, lastSpeed = 0, prevPos = null;
+  var userMarker=null, destMarker=null, routeLine=null;
+  var destination=null, userPos=null, lastSpeed=0, prevPos=null;
 
-  /* استرجاع الوجهة المحفوظة */
   try {
     var saved = localStorage.getItem('dest');
-    if (saved) {
-      var s = JSON.parse(saved);
-      setDestination(L.latLng(s.lat, s.lng));
-    }
+    if (saved) { var s = JSON.parse(saved); setDestination(L.latLng(s.lat, s.lng)); }
   } catch(e){}
 
-  /* ================= أدوات حسابية ================= */
-  function haversine(lat1, lon1, lat2, lon2) {
-    var R = 6371000, rad = function(d){ return d * Math.PI / 180; };
-    var dLat = rad(lat2-lat1), dLon = rad(lon2-lon1);
-    var a = Math.sin(dLat/2)*Math.sin(dLat/2) +
-            Math.cos(rad(lat1))*Math.cos(rad(lat2))*Math.sin(dLon/2)*Math.sin(dLon/2);
-    return 2 * R * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  /* ================= حسابات ================= */
+  function haversine(la1, lo1, la2, lo2){
+    var R=6371000, rad=function(d){return d*Math.PI/180;};
+    var a = Math.sin(rad(la2-la1)/2)**2 + Math.cos(rad(la1))*Math.cos(rad(la2))*Math.sin(rad(lo2-lo1)/2)**2;
+    return 2*R*Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+  function bearing(la1, lo1, la2, lo2){
+    var rad=function(d){return d*Math.PI/180;};
+    var y = Math.sin(rad(lo2-lo1))*Math.cos(rad(la2));
+    var x = Math.cos(rad(la1))*Math.sin(rad(la2))-Math.sin(rad(la1))*Math.cos(rad(la2))*Math.cos(rad(lo2-lo1));
+    return (Math.atan2(y,x)*180/Math.PI+360)%360;
+  }
+  function dirName(deg){
+    return ['شمال','شمال شرق','شرق','جنوب شرق','جنوب','جنوب غرب','غرب','شمال غرب'][Math.round(deg/45)%8];
   }
 
-  function bearing(lat1, lon1, lat2, lon2) {
-    var rad = function(d){ return d * Math.PI / 180; };
-    var y = Math.sin(rad(lon2-lon1)) * Math.cos(rad(lat2));
-    var x = Math.cos(rad(lat1))*Math.sin(rad(lat2)) -
-            Math.sin(rad(lat1))*Math.cos(rad(lat2))*Math.cos(rad(lon2-lon1));
-    return (Math.atan2(y, x) * 180/Math.PI + 360) % 360;
-  }
-
-  /* ================= تحديث المسار ================= */
-  function updateRoute() {
+  /* ================= المسار ================= */
+  function updateRoute(){
     if (!userPos || !destination) return;
-
-    var pts = [userPos, destination];
-    if (routeLine) routeLine.setLatLngs(pts);
-    else routeLine = L.polyline(pts, {color:'#0288d1', weight:4, dashArray:'8,8'}).addTo(map);
+    if (routeLine) routeLine.setLatLngs([userPos, destination]);
+    else routeLine = L.polyline([userPos, destination], {color:'#0288d1', weight:4, dashArray:'8,8'}).addTo(map);
 
     var d = haversine(userPos.lat, userPos.lng, destination.lat, destination.lng);
-    document.getElementById('distance').textContent =
-      d >= 1000 ? (d/1000).toFixed(2)+' كم' : d.toFixed(0)+' م';
+    document.getElementById('distance').textContent = d>=1000 ? (d/1000).toFixed(2)+' كم' : d.toFixed(0)+' م';
+    document.getElementById('bearing').textContent = Math.round(bearing(userPos.lat,userPos.lng,destination.lat,destination.lng))+'°';
 
-    var brg = bearing(userPos.lat, userPos.lng, destination.lat, destination.lng);
-    document.getElementById('bearing').textContent = Math.round(brg) + '°';
-
-    if (lastSpeed > 0.25) {
-      var mins = Math.round(d / lastSpeed / 60);
-      document.getElementById('time').textContent =
-        mins >= 60 ? Math.floor(mins/60)+'س '+(mins%60)+'د' : mins+' د';
-    } else {
-      document.getElementById('time').textContent = '--:--';
-    }
+    if (lastSpeed > 0.25){
+      var m = Math.round(d/lastSpeed/60);
+      document.getElementById('time').textContent = m>=60 ? Math.floor(m/60)+'س '+(m%60)+'د' : m+' د';
+    } else document.getElementById('time').textContent = '--:--';
   }
 
   /* ================= الوجهة ================= */
-  function setDestination(latlng) {
-    destination = latlng;
-    if (destMarker) destMarker.setLatLng(latlng);
-    else destMarker = L.marker(latlng, {
-      icon: L.divIcon({ html:'<div style="font-size:32px;">🏁</div>',
-                        iconSize:[32,32], iconAnchor:[16,32], className:'' })
-    }).addTo(map);
+  function setDestination(ll){
+    destination = ll;
+    if (destMarker) destMarker.setLatLng(ll);
+    else destMarker = L.marker(ll, {icon: L.divIcon({html:'<div style="font-size:32px;">🏁</div>', iconSize:[32,32], iconAnchor:[16,32], className:''})}).addTo(map);
     document.getElementById('clearDest').style.display = 'block';
     updateRoute();
   }
@@ -200,81 +165,97 @@
 
   document.getElementById('clearDest').onclick = function(){
     destination = null;
-    if (destMarker) { map.removeLayer(destMarker); destMarker = null; }
-    if (routeLine) { map.removeLayer(routeLine); routeLine = null; }
+    if (destMarker){ map.removeLayer(destMarker); destMarker=null; }
+    if (routeLine){ map.removeLayer(routeLine); routeLine=null; }
     this.style.display = 'none';
-    document.getElementById('distance').textContent = '--';
-    document.getElementById('time').textContent = '--:--';
-    document.getElementById('bearing').textContent = '--°';
+    document.getElementById('distance').textContent='--';
+    document.getElementById('time').textContent='--:--';
+    document.getElementById('bearing').textContent='--°';
     try { localStorage.removeItem('dest'); } catch(err){}
   };
 
-  /* ================= وحدة السرعة ================= */
-  var speedUnit = 'kmh';
+  /* ================= السرعة ================= */
+  var speedUnit='kmh';
   document.getElementById('speedBox').onclick = function(){
-    speedUnit = (speedUnit === 'kmh') ? 'knots' : 'kmh';
-    document.getElementById('speedUnit').textContent =
-      speedUnit === 'kmh' ? 'كم/س' : 'عقدة';
-    updateSpeedDisplay();
+    speedUnit = speedUnit==='kmh' ? 'knots' : 'kmh';
+    document.getElementById('speedUnit').textContent = speedUnit==='kmh' ? 'كم/س' : 'عقدة';
+    showSpeed();
   };
-
-  function updateSpeedDisplay() {
-    var v = speedUnit === 'kmh' ? lastSpeed * 3.6 : lastSpeed * 1.94384;
+  function showSpeed(){
+    var v = speedUnit==='kmh' ? lastSpeed*3.6 : lastSpeed*1.94384;
     document.getElementById('speed').textContent = v.toFixed(1);
   }
 
   /* ================= GPS ================= */
-  if (navigator.geolocation) {
+  if (navigator.geolocation){
     navigator.geolocation.watchPosition(function(pos){
       userPos = L.latLng(pos.coords.latitude, pos.coords.longitude);
-
       var s = pos.coords.speed;
-      lastSpeed = (s !== null && s !== undefined && s >= 0) ? s : 0;
-
-      /* سرعة احتياطية محسوبة يدوياً */
-      if (lastSpeed === 0 && prevPos) {
-        var dt = (pos.timestamp - prevPos.t) / 1000;
-        if (dt > 0) {
+      lastSpeed = (s!==null && s>=0) ? s : 0;
+      if (!lastSpeed && prevPos){
+        var dt = (pos.timestamp - prevPos.t)/1000;
+        if (dt>0){
           var dd = haversine(prevPos.lat, prevPos.lng, userPos.lat, userPos.lng);
-          if (dd / dt > 0.3) lastSpeed = dd / dt;
+          if (dd/dt > 0.3) lastSpeed = dd/dt;
         }
       }
-      prevPos = { lat:userPos.lat, lng:userPos.lng, t:pos.timestamp };
+      prevPos = {lat:userPos.lat, lng:userPos.lng, t:pos.timestamp};
 
-      /* سهم القارب الدوار نحو الوجهة */
-      var rot = 0;
-      if (destination && userPos) {
-        rot = bearing(userPos.lat, userPos.lng, destination.lat, destination.lng);
-      }
-
-      var icon = L.divIcon({
-        html: '<div class="boat-arrow" style="transform:rotate(' + rot + 'deg);"></div>',
-        iconSize: [24,26], iconAnchor: [12,13], className: ''
-      });
+      var rot = destination ? bearing(userPos.lat,userPos.lng,destination.lat,destination.lng) : 0;
+      var icon = L.divIcon({html:'<div class="boat-arrow" style="transform:rotate('+rot+'deg);"></div>', iconSize:[24,26], iconAnchor:[12,13], className:''});
 
       if (userMarker) userMarker.setLatLng(userPos).setIcon(icon);
-      else userMarker = L.marker(userPos, {icon: icon}).addTo(map);
+      else userMarker = L.marker(userPos, {icon:icon}).addTo(map);
 
-      updateSpeedDisplay();
+      showSpeed();
       updateRoute();
-
-      /* تتبع فقط عند خروج القارب من الشاشة */
-      if (!map.getBounds().pad(0.2).contains(userPos)) {
-        map.panTo(userPos);
-      } else if (map.getZoom() < 14 && !destMarker) {
-        map.setView(userPos, 14);
-      }
-    }, function(err){
-      console.log('GPS: ' + err.message);
-    }, { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 });
+      if (!map.getBounds().pad(0.2).contains(userPos)) map.panTo(userPos);
+    }, function(err){ console.log('GPS: '+err.message); },
+    { enableHighAccuracy:true, maximumAge:2000, timeout:15000 });
   }
+
+  /* ================= حالة البحر ================= */
+  function douglas(h){
+    if (h < 0.1)  return '🔴 بحر ميت';
+    if (h < 0.5)  return '🟢 هادئ — موج خفيف';
+    if (h < 1.25) return '🟢 خف — مناسب للقوارب الصغيرة';
+    if (h < 2.5)  return '🟡 متوسط — حذر';
+    if (h < 4)    return '🟠 عالٍ — خطير على القوارب الصغيرة';
+    return '🔴 عالٍ جداً — خطر على جميع القوارب';
+  }
+
+  function getSeaState(lat, lng){
+    document.getElementById('seaState').textContent = 'جاري التحميل...';
+    fetch('https://marine-api.open-meteo.com/v1/marine?latitude='+lat+'&longitude='+lng+'&current=wave_height,wave_direction,wave_period')
+      .then(function(r){ return r.json(); })
+      .then(function(data){
+        var c = data.current;
+        if (!c || c.wave_height === null){
+          document.getElementById('seaState').textContent = '⚠️ لا توجد بيانات لهذه المنطقة';
+          return;
+        }
+        document.getElementById('waveHeight').textContent = c.wave_height.toFixed(2);
+        document.getElementById('waveDir').textContent = dirName(c.wave_direction);
+        document.getElementById('wavePeriod').textContent = c.wave_period !== null ? c.wave_period.toFixed(0)        : '--';
+        document.getElementById('seaState').textContent = douglas(c.wave_height);
+      })
+      .catch(function(){
+        document.getElementById('seaState').textContent = '⚠️ خطأ في الاتصال — تحقق من الإنترنت';
+      });
+  }
+
+  document.getElementById('btnSeaInfo').onclick = function(){
+    var card = document.getElementById('seaCard');
+    if (card.style.display === 'block'){ card.style.display = 'none'; return; }
+    card.style.display = 'block';
+    var loc = userPos || map.getCenter();
+    getSeaState(loc.lat, loc.lng);
+  };
 
   /* ================= إصلاح الخريطة البيضاء ================= */
   map.invalidateSize();
-
   setTimeout(function(){ map.invalidateSize(); }, 500);
   setTimeout(function(){ map.invalidateSize(); }, 1500);
-
   window.addEventListener('resize', function(){ map.invalidateSize(); });
   window.addEventListener('orientationchange', function(){
     setTimeout(function(){ map.invalidateSize(); }, 300);
