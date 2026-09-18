@@ -232,7 +232,7 @@ function exportGPX(){
   if(trackPoints.length<2){ toast('⚠️ لا يوجد مسار مسجّل'); return; }
   let gpx='<?xml version="1.0"?><gpx version="1.1"><trk><name>Redline Track</name><trkseg>';
   trackPoints.forEach(p=>gpx+='<trkpt lat="'+p[0]+'" lon="'+p[1]+'"></trkpt>');
-  gpx+='</trkseg></trkseg></gpx>';
+  gpx+='</trkseg></trk></gpx>';
   const blob=new Blob([gpx],{type:'application/gpx+xml'});
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
