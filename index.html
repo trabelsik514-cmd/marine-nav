@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -64,7 +64,6 @@ body { font-family:'Segoe UI', Tahoma, Arial, sans-serif; background:#1a1a2e; he
 .wp-loading .spin { display:inline-block; animation:spin 1s linear infinite; font-size:28px; }
 @keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
 
-/* بطاقات البيانات */
 .wp-cards { display:flex; flex-direction:column; gap:10px; }
 .wp-card { background:rgba(255,255,255,.04); border-radius:14px; padding:14px; }
 .wp-card-title { color:#ffcdd2; font-size:12px; font-weight:bold; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
@@ -74,14 +73,32 @@ body { font-family:'Segoe UI', Tahoma, Arial, sans-serif; background:#1a1a2e; he
 .wp-item .val small { font-size:13px; color:#aebacf; font-weight:normal; }
 .wp-item .lbl { color:#8892b0; font-size:11px; margin-top:2px; }
 .wp-item .emoji { font-size:28px; margin-bottom:4px; }
-
-/* اتجاه الرياح */
 .wind-arrow { display:inline-block; font-size:24px; transition:transform .3s; }
 .wp-bad { color:#ff5252; background:rgba(255,82,82,.12); border-radius:12px; padding:8px 12px; margin-top:8px; font-size:13px; text-align:center; }
 .wp-good { color:#69f0ae; background:rgba(105,240,174,.1); border-radius:12px; padding:8px 12px; margin-top:8px; font-size:13px; text-align:center; }
-
-/* ملاحظة المصدر */
 .wp-source { text-align:center; color:#5a6480; font-size:10px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.05); }
+
+/* ===== 🎯 ستايل الـ Popup الخاص بنقرة الخريطة ===== */
+.map-weather-popup .leaflet-popup-content-wrapper {
+  background:rgba(13,17,30,.96);
+  backdrop-filter:blur(12px);
+  color:#fff;
+  border-radius:16px;
+  border:1px solid #d32f2f;
+  box-shadow:0 8px 32px rgba(0,0,0,.6);
+  direction:rtl;
+  padding:0;
+}
+.map-weather-popup .leaflet-popup-content { margin:14px; min-width:210px; }
+.map-weather-popup .leaflet-popup-tip { background:#1a1a2e; border:1px solid #d32f2f; }
+.map-weather-popup .popup-title { font-size:14px; font-weight:bold; color:#ff5252; margin-bottom:10px; text-align:center; border-bottom:1px solid rgba(255,255,255,.08); padding-bottom:8px; }
+.map-weather-popup .popup-row { display:flex; justify-content:space-between; padding:4px 0; font-size:13px; border-bottom:1px solid rgba(255,255,255,.04); }
+.map-weather-popup .popup-row:last-child { border:none; }
+.map-weather-popup .popup-label { color:#8892b0; }
+.map-weather-popup .popup-value { color:#fff; font-weight:bold; }
+.map-weather-popup .popup-bad { color:#ff5252; }
+.map-weather-popup .popup-good { color:#69f0ae; }
+.map-weather-popup .popup-loading { text-align:center; padding:20px 0; color:#aebacf; font-size:13px; }
 </style>
 </head>
 <body>
@@ -146,7 +163,6 @@ setTimeout(()=>{ document.getElementById('splash').style.display='none'; }, 2200
 /* ===== الخريطة ===== */
 const map = L.map('map').setView([36.77, 10.22], 13);
 
-const streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19, attribution:'© OpenStreetMap' });
 const seaLayer = L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png', { maxZoom:18, attribution:'© OpenSeaMap' });
 const baseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom:19 });
 baseLayer.addTo(map);
@@ -279,17 +295,11 @@ document.getElementById('splash').onclick = ()=>{
 
 /* ==============================================================
    🌤️ NOAA WEATHER & MARINE INTEGRATION
-   ==============================================================
-   يستخدم Open-Meteo الذي يوفّر بيانات نماذج NOAA GFS العالمية:
-   - بيانات الطقس (حرارة، رياح، رطوبة، ضغط)
-   - بيانات بحرية (ارتفاع الأمواج، التيارات، الـ swell)
-   - مجاني تماماً بدون مفتاح API
    ============================================================== */
 
 const weatherPanel = document.getElementById('weatherPanel');
 const weatherBody = document.getElementById('weatherBody');
 
-// خريطة رموز الطقس (WMO) إلى أيقونات
 const weatherIcons = {
   0:'☀️',1:'🌤️',2:'⛅',3:'☁️',
   45:'🌫️',48:'🌫️',
@@ -311,71 +321,41 @@ const weatherLabels = {
   95:'عاصفة رعدية',96:'عاصفة رعدية مع برد',99:'عاصفة رعدية مع برد كثيف'
 };
 
-// تحويل اتجاه الرياح بالدرجات إلى اسم الاتجاه بالعربية
 function windDirText(d){
   const dirs=['شمال','شمال شرقي','شرق','جنوب شرقي','جنوب','جنوب غربي','غرب','شمال غربي'];
   return dirs[Math.round(d/45)%8];
 }
 
-// تقييم حالة البحر للصيد
-function seaRating(waveH, windS){
-  let issues=[];
-  if(waveH>1.5) issues.push('🌊 الموج مرتفع');
-  else if(waveH>0.8) issues.push('🌊 موج متوسط');
-  else issues.push('✅ البحر هادئ');
-  if(windS>40) issues.push('💨 رياح قوية جداً');
-  else if(windS>25) issues.push('💨 رياح نشطة');
-  else if(windS>10) issues.push('🌬️ نسيم خفيف');
-  else issues.push('✅ رياح مناسبة');
-  return issues;
-}
-
-// 🌐 جلب بيانات الطقس من Open-Meteo (NOAA GFS)
 async function fetchWeatherMarine(lat, lng){
-  // 1. الطقس
   const wRes = await fetch(
-    `https://api.open-meteo.com/v1/forecast?`+
-    `latitude=${lat}&longitude=${lng}`+
-    `&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,pressure_msl,cloud_cover`+
-    `&timezone=auto`
+    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}`+
+    `&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,pressure_msl,cloud_cover&timezone=auto`
   );
   const wData = await wRes.json();
-
-  // 2. البيانات البحرية
   let mData = null;
   try {
     const mRes = await fetch(
-      `https://marine-api.open-meteo.com/v1/marine?`+
-      `latitude=${lat}&longitude=${lng}`+
-      `&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,ocean_current_velocity,ocean_current_direction`+
-      `&timezone=auto`
+      `https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lng}`+
+      `&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,ocean_current_velocity,ocean_current_direction&timezone=auto`
     );
     mData = await mRes.json();
-  } catch(e){
-    console.warn('Marine data unavailable:', e);
-  }
-
+  } catch(e){ console.warn('Marine data unavailable:', e); }
   return { weather: wData, marine: mData };
 }
 
-// 🖼️ عرض البيانات في اللوحة
 function renderWeatherData(data, lat, lng){
   const w = data.weather;
   const m = data.marine;
-
   if(!w || !w.current){
-    weatherBody.innerHTML = `<div class="wp-loading">❌ تعذّر تحميل البيانات. تأكد من اتصالك بالإنترنت.</div>`;
+    weatherBody.innerHTML = `<div class="wp-loading">❌ تعذّر تحميل البيانات.</div>`;
     return;
   }
-
   const c = w.current;
   const code = c.weather_code;
   const icon = weatherIcons[code] || '🌡️';
   const label = weatherLabels[code] || 'غير معروف';
   const windDeg = c.wind_direction_10m;
   const windArrow = (windDeg !== undefined) ? `transform:rotate(${windDeg+180}deg)` : '';
-
-  // بيانات بحرية
   const mc = m?.current;
   const waveH = mc?.wave_height;
   const waveDir = mc?.wave_direction;
@@ -385,14 +365,10 @@ function renderWeatherData(data, lat, lng){
   const swellPeriod = mc?.swell_wave_period;
   const currentV = mc?.ocean_current_velocity;
   const currentDir = mc?.ocean_current_direction;
-
-  // تقييم
   const rating = seaRating(waveH||0, c.wind_speed_10m||0);
 
   const html = `
     <div class="wp-cards">
-
-      <!-- بطاقة الطقس الحالي -->
       <div class="wp-card">
         <div class="wp-card-title">🌡️ الطقس الحالي</div>
         <div class="wp-grid">
@@ -428,8 +404,6 @@ function renderWeatherData(data, lat, lng){
           </div>
         </div>
       </div>
-
-      <!-- بطاقة الرياح -->
       <div class="wp-card">
         <div class="wp-card-title">💨 الرياح</div>
         <div style="display:flex;align-items:center;gap:16px;justify-content:center;padding:8px 0;">
@@ -444,9 +418,7 @@ function renderWeatherData(data, lat, lng){
         </div>
         <div style="text-align:center;color:#8892b0;font-size:11px;">الاتجاه: ${windDeg||'--'}°</div>
       </div>
-
       ${mc ? `
-      <!-- بطاقة الأمواج -->
       <div class="wp-card">
         <div class="wp-card-title">🌊 الأمواج (NOAA GFS)</div>
         <div class="wp-grid">
@@ -482,8 +454,6 @@ function renderWeatherData(data, lat, lng){
           </div>
         </div>
       </div>
-
-      <!-- بطاقة التيارات -->
       <div class="wp-card">
         <div class="wp-card-title">🌊 التيارات البحرية</div>
         <div style="display:flex;align-items:center;gap:20px;justify-content:center;padding:8px 0;">
@@ -504,12 +474,10 @@ function renderWeatherData(data, lat, lng){
         <div class="wp-card-title">🌊 البيانات البحرية</div>
         <div style="text-align:center;color:#8892b0;padding:8px 0;font-size:13px;">
           ⏳ البيانات البحرية غير متاحة للموقع الحالي<br>
-          <small>(قد لا تكون متوفرة في المناطق البعيدة عن الشاطئ في هذا النموذج)</small>
+          <small>(قد لا تكون متوفرة في المناطق البعيدة عن الشاطئ)</small>
         </div>
       </div>
       `}
-
-      <!-- تقييم الصيد -->
       <div class="wp-card">
         <div class="wp-card-title">🎣 تقييم حالة البحر للصيد</div>
         ${rating.map(r => {
@@ -517,54 +485,128 @@ function renderWeatherData(data, lat, lng){
           return `<div class="${cls}">${r}</div>`;
         }).join('')}
       </div>
-
-      <!-- المصدر والموقع -->
       <div class="wp-source">
         📡 بيانات نموذج NOAA GFS العالمي عبر Open-Meteo<br>
         📍 ${lat.toFixed(4)}, ${lng.toFixed(4)} · ${new Date(c.time).toLocaleString('ar-TN')}
       </div>
     </div>
   `;
-
   weatherBody.innerHTML = html;
 }
 
-// 🚀 زر الطقس
+function seaRating(waveH, windS){
+  let issues=[];
+  if(waveH>1.5) issues.push('🌊 الموج مرتفع');
+  else if(waveH>0.8) issues.push('🌊 موج متوسط');
+  else issues.push('✅ البحر هادئ');
+  if(windS>40) issues.push('💨 رياح قوية جداً');
+  else if(windS>25) issues.push('💨 رياح نشطة');
+  else if(windS>10) issues.push('🌬️ نسيم خفيف');
+  else issues.push('✅ رياح مناسبة');
+  return issues;
+}
+
+/* ===== زر الطقس (الموقع الحالي) ===== */
 document.getElementById('btnWeather').onclick = async ()=>{
   weatherPanel.classList.add('show');
-  weatherBody.innerHTML = `
-    <div class="wp-loading">
-      <div class="spin">🔄</div>
-      <p style="margin-top:10px;">جاري تحميل بيانات NOAA...</p>
-    </div>
-  `;
-
+  weatherBody.innerHTML = `<div class="wp-loading"><div class="spin">🔄</div><p style="margin-top:10px;">جاري تحميل بيانات NOAA...</p></div>`;
   try {
     const data = await fetchWeatherMarine(currentLat, currentLng);
     renderWeatherData(data, currentLat, currentLng);
     toast('🌤️ تم تحميل بيانات الطقس');
   } catch(e){
-    console.error(e);
-    weatherBody.innerHTML = `
-      <div class="wp-loading">
-        ❌ فشل في تحميل البيانات<br>
-        <small style="color:#8892b0;">${e.message}</small>
-        <br><br>
-        <div class="btn" style="display:inline-flex;padding:8px 20px;" onclick="document.getElementById('btnWeather').click()">
-          🔄 إعادة المحاولة
-        </div>
-      </div>
-    `;
+    weatherBody.innerHTML = `<div class="wp-loading">❌ فشل في تحميل البيانات<br><small style="color:#8892b0;">${e.message}</small></div>`;
   }
 };
 
-// إغلاق لوحة الطقس
 document.getElementById('closeWeather').onclick = ()=>{
   weatherPanel.classList.remove('show');
 };
 
-// إغلاق بالضغط خارج اللوحة (اختياري)
-// يمكن إضافة click على الخريطة لإغلاق اللوحة لاحقاً
+/* ==============================================================
+   🎯 النقر على الخريطة → عرض حالة الطقس والبحر في الموقع
+   ============================================================== */
+
+map.on('click', async function(e){
+  const lat = e.latlng.lat;
+  const lng = e.latlng.lng;
+
+  // إنشاء popup مع رسالة تحميل
+  const popup = L.popup({
+    className: 'map-weather-popup',
+    maxWidth: 260,
+    minWidth: 210,
+    closeButton: true,
+    autoClose: true
+  }).setLatLng([lat, lng]).setContent(`
+    <div class="popup-loading">
+      <div class="spin" style="display:inline-block;animation:spin 1s linear infinite;font-size:24px;">🔄</div>
+      <p style="margin-top:8px;">جلب بيانات الطقس...</p>
+    </div>
+  `).openOn(map);
+
+  try {
+    const data = await fetchWeatherMarine(lat, lng);
+    const w = data.weather;
+    const m = data.marine;
+
+    if(!w || !w.current){
+      popup.setContent(`<div style="text-align:center;padding:10px;color:#ff5252;">❌ تعذّر تحميل البيانات</div>`);
+      return;
+    }
+
+    const c = w.current;
+    const code = c.weather_code;
+    const icon = weatherIcons[code] || '🌡️';
+    const label = weatherLabels[code] || '';
+    const windDeg = c.wind_direction_10m;
+    const mc = m?.current;
+    const waveH = mc?.wave_height;
+
+    // بناء محتوى الـ popup
+    let html = `<div class="popup-title">${icon} ${label}</div>`;
+
+    html += `<div class="popup-row"><span class="popup-label">🌡️ الحرارة</span><span class="popup-value">${c.temperature_2m}°C</span></div>`;
+
+    html += `<div class="popup-row"><span class="popup-label">💨 الرياح</span><span class="popup-value">${c.wind_speed_10m} كم/س ${windDeg!==undefined?'· '+windDirText(windDeg):''}</span></div>`;
+
+    if(mc && mc.wave_height !== undefined){
+      html += `<div class="popup-row"><span class="popup-label">🌊 ارتفاع الموج</span><span class="popup-value">${mc.wave_height.toFixed(1)} م</span></div>`;
+      if(mc.wave_direction !== undefined){
+        html += `<div class="popup-row"><span class="popup-label">🧭 اتجاه الموج</span><span class="popup-value">${windDirText(mc.wave_direction)} (${mc.wave_direction}°)</span></div>`;
+      }
+      if(mc.wave_period !== undefined){
+        html += `<div class="popup-row"><span class="popup-label">🔄 دوران الموج</span><span class="popup-value">${mc.wave_period} ث</span></div>`;
+      }
+      if(mc.ocean_current_velocity !== undefined){
+        html += `<div class="popup-row"><span class="popup-label">🌊 التيار</span><span class="popup-value">${mc.ocean_current_velocity.toFixed(2)} م/ث ${mc.ocean_current_direction!==undefined?'· '+windDirText(mc.ocean_current_direction):''}</span></div>`;
+      }
+      if(mc.swell_wave_height !== undefined){
+        html += `<div class="popup-row"><span class="popup-label">🌊 Swell</span><span class="popup-value">${mc.swell_wave_height.toFixed(1)} م</span></div>`;
+      }
+    } else {
+      html += `<div class="popup-row"><span class="popup-label">🌊 الموج</span><span class="popup-value" style="color:#8892b0;">غير متاح</span></div>`;
+    }
+
+    // تقييم سريع
+    const rating = seaRating(waveH||0, c.wind_speed_10m||0);
+    const badCount = rating.filter(r => !r.startsWith('✅')).length;
+    if(badCount === 0){
+      html += `<div class="popup-row"><span class="popup-label">🎣 التقييم</span><span class="popup-value popup-good">✅ مناسب للصيد</span></div>`;
+    } else if(badCount <= 1){
+      html += `<div class="popup-row"><span class="popup-label">🎣 التقييم</span><span class="popup-value" style="color:#ffab40;">⚠️ بحذر</span></div>`;
+    } else {
+      html += `<div class="popup-row"><span class="popup-label">🎣 التقييم</span><span class="popup-value popup-bad">❌ غير مناسب</span></div>`;
+    }
+
+    html += `<div style="text-align:center;color:#5a6480;font-size:9px;margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,.06);">📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}</div>`;
+
+    popup.setContent(html);
+
+  } catch(err){
+    popup.setContent(`<div style="text-align:center;padding:10px;color:#ff5252;">❌ خطأ: ${err.message}</div>`);
+  }
+});
 </script>
 </body>
 </html>
