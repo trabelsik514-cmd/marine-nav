@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
@@ -44,6 +44,44 @@ body { font-family:'Segoe UI', Tahoma, Arial, sans-serif; background:#1a1a2e; he
 
 /* ===== معلومات المسار ===== */
 #trackInfo { position:fixed; top:66px; right:10px; background:rgba(20,20,35,.9); color:#fff; padding:8px 12px; border-radius:10px; font-size:12px; z-index:900; display:none; border:1px solid #d32f2f; direction:ltr; }
+
+/* ===== 🌤️ لوحة الطقس ===== */
+#weatherPanel {
+  position:fixed; bottom:0; left:0; right:0;
+  background:rgba(13,17,30,.96); backdrop-filter:blur(16px);
+  border-radius:22px 22px 0 0; z-index:1500;
+  padding:0; max-height:65vh; overflow-y:auto;
+  transform:translateY(100%); transition:transform .35s cubic-bezier(.32,.72,0,1);
+  border-top:3px solid #d32f2f; direction:rtl;
+}
+#weatherPanel.show { transform:translateY(0); }
+#weatherPanel .wp-header { display:flex; align-items:center; justify-content:space-between; padding:16px 18px 12px; border-bottom:1px solid rgba(255,255,255,.08); position:sticky; top:0; background:rgba(13,17,30,.98); z-index:2; }
+#weatherPanel .wp-header h3 { color:#fff; font-size:16px; display:flex; align-items:center; gap:8px; }
+#weatherPanel .wp-close { background:none; border:none; color:#aaa; font-size:22px; cursor:pointer; padding:4px 10px; border-radius:10px; }
+#weatherPanel .wp-close:hover { background:rgba(255,255,255,.1); color:#fff; }
+#weatherPanel .wp-body { padding:14px 18px 24px; }
+.wp-loading { text-align:center; padding:30px 0; color:#aebacf; font-size:14px; }
+.wp-loading .spin { display:inline-block; animation:spin 1s linear infinite; font-size:28px; }
+@keyframes spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
+
+/* بطاقات البيانات */
+.wp-cards { display:flex; flex-direction:column; gap:10px; }
+.wp-card { background:rgba(255,255,255,.04); border-radius:14px; padding:14px; }
+.wp-card-title { color:#ffcdd2; font-size:12px; font-weight:bold; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+.wp-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.wp-item { text-align:center; }
+.wp-item .val { color:#fff; font-size:20px; font-weight:bold; }
+.wp-item .val small { font-size:13px; color:#aebacf; font-weight:normal; }
+.wp-item .lbl { color:#8892b0; font-size:11px; margin-top:2px; }
+.wp-item .emoji { font-size:28px; margin-bottom:4px; }
+
+/* اتجاه الرياح */
+.wind-arrow { display:inline-block; font-size:24px; transition:transform .3s; }
+.wp-bad { color:#ff5252; background:rgba(255,82,82,.12); border-radius:12px; padding:8px 12px; margin-top:8px; font-size:13px; text-align:center; }
+.wp-good { color:#69f0ae; background:rgba(105,240,174,.1); border-radius:12px; padding:8px 12px; margin-top:8px; font-size:13px; text-align:center; }
+
+/* ملاحظة المصدر */
+.wp-source { text-align:center; color:#5a6480; font-size:10px; margin-top:12px; padding-top:10px; border-top:1px solid rgba(255,255,255,.05); }
 </style>
 </head>
 <body>
@@ -71,6 +109,7 @@ body { font-family:'Segoe UI', Tahoma, Arial, sans-serif; background:#1a1a2e; he
 <!-- شريط الأزرار -->
 <div id="toolbar">
   <div class="btn" id="btnLocate"><span class="ico">🎯</span>موقعي</div>
+  <div class="btn" id="btnWeather"><span class="ico">🌤️</span>الطقس</div>
   <div class="btn" id="btnSea"><span class="ico">🌊</span>البحر</div>
   <div class="btn" id="btnDepth"><span class="ico">📊</span>أعماق</div>
   <div class="btn" id="btnTrack"><span class="ico">🗺️</span>مسار</div>
@@ -80,11 +119,25 @@ body { font-family:'Segoe UI', Tahoma, Arial, sans-serif; background:#1a1a2e; he
   <div class="btn call" id="btnShare"><span class="ico">📤</span>موقعي للغروب</div>
 </div>
 
+<!-- 🌤️ لوحة الطقس -->
+<div id="weatherPanel">
+  <div class="wp-header">
+    <h3>🌤️ الطقس والأحوال البحرية</h3>
+    <button class="wp-close" id="closeWeather">✕</button>
+  </div>
+  <div class="wp-body" id="weatherBody">
+    <div class="wp-loading">
+      <div class="spin">🔄</div>
+      <p style="margin-top:10px;">جاري تحميل بيانات NOAA...</p>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* ⚙️ الإعدادات — ⚠️ ضع رابط غروب WhatsApp هنا! */
+/* ⚙️ الإعدادات */
 const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/XXXXXXXXXXXXXXX"; // ← بدّله برابط غروبكم
 
 /* ===== شاشة البداية ===== */
@@ -113,9 +166,10 @@ function toggleDepth(){
 }
 
 /* ===== GPS ===== */
-let myMarker=null, accuracyCircle=null, heading=0;
+let myMarker=null, accuracyCircle=null, heading=0, currentLat=36.77, currentLng=10.22;
 function onGPS(pos){
-  const lat=pos.coords.latitude, lng=pos.coords.longitude, acc=pos.coords.accuracy;
+  currentLat=pos.coords.latitude; currentLng=pos.coords.longitude;
+  const lat=currentLat, lng=currentLng, acc=pos.coords.accuracy;
   document.getElementById('coords').innerHTML =
     lat.toFixed(5)+', '+lng.toFixed(5)+'<small>🧭 '+Math.round(pos.coords.heading||0)+'° · دقة '+Math.round(acc)+'م</small>';
   if(!myMarker){
@@ -131,7 +185,7 @@ function onGPS(pos){
 }
 navigator.geolocation.watchPosition(onGPS, err=>toast('⚠️ فعّل الموقع!'), {enableHighAccuracy:true, maximumAge:1000});
 
-/* ===== الأزرار ===== */
+/* ===== الأزرار الأساسية ===== */
 function toast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
@@ -178,7 +232,7 @@ function calcSpeed(){
   if(trackPoints.length<2) return 0;
   const a=trackPoints[trackPoints.length-2], b=trackPoints[trackPoints.length-1];
   const dKm=map.distance(a,b)/1000;
-  return dKm*3600; // نقطة كل ثانية تقريباً
+  return dKm*3600;
 }
 
 /* ===== حفظ النقاط ===== */
@@ -202,7 +256,6 @@ document.getElementById('btnPoints').onclick = ()=>{
   alert(html);
 };
 
-/* ===== 📞 زر المجموعة (WhatsApp) ===== */
 document.getElementById('btnCall').onclick = ()=>{
   if(WHATSAPP_GROUP_URL.includes('XXXX')){
     toast('⚠️ ضع رابط الغروب في إعدادات الكود أولاً!');
@@ -212,7 +265,6 @@ document.getElementById('btnCall').onclick = ()=>{
   toast('📞 فتح غروب المجموعة');
 };
 
-/* ===== 📤 إرسال موقعي للغروب ===== */
 document.getElementById('btnShare').onclick = ()=>{
   if(!myMarker){ toast('⏳ انتظر إشارة GPS...'); return; }
   const ll=myMarker.getLatLng();
@@ -221,10 +273,298 @@ document.getElementById('btnShare').onclick = ()=>{
   toast('📤 تم تجهيز موقعك للإرسال');
 };
 
-/* ===== إخفاء شاشة البداية ===== */
 document.getElementById('splash').onclick = ()=>{
   document.getElementById('splash').style.display='none';
 };
+
+/* ==============================================================
+   🌤️ NOAA WEATHER & MARINE INTEGRATION
+   ==============================================================
+   يستخدم Open-Meteo الذي يوفّر بيانات نماذج NOAA GFS العالمية:
+   - بيانات الطقس (حرارة، رياح، رطوبة، ضغط)
+   - بيانات بحرية (ارتفاع الأمواج، التيارات، الـ swell)
+   - مجاني تماماً بدون مفتاح API
+   ============================================================== */
+
+const weatherPanel = document.getElementById('weatherPanel');
+const weatherBody = document.getElementById('weatherBody');
+
+// خريطة رموز الطقس (WMO) إلى أيقونات
+const weatherIcons = {
+  0:'☀️',1:'🌤️',2:'⛅',3:'☁️',
+  45:'🌫️',48:'🌫️',
+  51:'🌦️',53:'🌦️',55:'🌦️',56:'🌧️',57:'🌧️',
+  61:'🌧️',63:'🌧️',65:'🌧️',66:'🌧️',67:'🌧️',
+  71:'🌨️',73:'🌨️',75:'🌨️',77:'❄️',
+  80:'🌦️',81:'🌦️',82:'🌦️',
+  85:'🌨️',86:'🌨️',
+  95:'⛈️',96:'⛈️',99:'⛈️'
+};
+const weatherLabels = {
+  0:'صافي',1:'صافي جزئياً',2:'غائم جزئياً',3:'غائم',
+  45:'ضباب',48:'ضباب متجمد',
+  51:'رذاذ خفيف',53:'رذاذ متوسط',55:'رذاذ كثيف',56:'رذاذ متجمد خفيف',57:'رذاذ متجمد كثيف',
+  61:'مطر خفيف',63:'مطر متوسط',65:'مطر غزير',66:'مطر متجمد خفيف',67:'مطر متجمد غزير',
+  71:'ثلج خفيف',73:'ثلج متوسط',75:'ثلج كثيف',77:'حبيبات ثلج',
+  80:'زخات مطر خفيفة',81:'زخات مطر متوسطة',82:'زخات مطر غزيرة',
+  85:'زخات ثلج خفيفة',86:'زخات ثلج كثيفة',
+  95:'عاصفة رعدية',96:'عاصفة رعدية مع برد',99:'عاصفة رعدية مع برد كثيف'
+};
+
+// تحويل اتجاه الرياح بالدرجات إلى اسم الاتجاه بالعربية
+function windDirText(d){
+  const dirs=['شمال','شمال شرقي','شرق','جنوب شرقي','جنوب','جنوب غربي','غرب','شمال غربي'];
+  return dirs[Math.round(d/45)%8];
+}
+
+// تقييم حالة البحر للصيد
+function seaRating(waveH, windS){
+  let issues=[];
+  if(waveH>1.5) issues.push('🌊 الموج مرتفع');
+  else if(waveH>0.8) issues.push('🌊 موج متوسط');
+  else issues.push('✅ البحر هادئ');
+  if(windS>40) issues.push('💨 رياح قوية جداً');
+  else if(windS>25) issues.push('💨 رياح نشطة');
+  else if(windS>10) issues.push('🌬️ نسيم خفيف');
+  else issues.push('✅ رياح مناسبة');
+  return issues;
+}
+
+// 🌐 جلب بيانات الطقس من Open-Meteo (NOAA GFS)
+async function fetchWeatherMarine(lat, lng){
+  // 1. الطقس
+  const wRes = await fetch(
+    `https://api.open-meteo.com/v1/forecast?`+
+    `latitude=${lat}&longitude=${lng}`+
+    `&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,pressure_msl,cloud_cover`+
+    `&timezone=auto`
+  );
+  const wData = await wRes.json();
+
+  // 2. البيانات البحرية
+  let mData = null;
+  try {
+    const mRes = await fetch(
+      `https://marine-api.open-meteo.com/v1/marine?`+
+      `latitude=${lat}&longitude=${lng}`+
+      `&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,ocean_current_velocity,ocean_current_direction`+
+      `&timezone=auto`
+    );
+    mData = await mRes.json();
+  } catch(e){
+    console.warn('Marine data unavailable:', e);
+  }
+
+  return { weather: wData, marine: mData };
+}
+
+// 🖼️ عرض البيانات في اللوحة
+function renderWeatherData(data, lat, lng){
+  const w = data.weather;
+  const m = data.marine;
+
+  if(!w || !w.current){
+    weatherBody.innerHTML = `<div class="wp-loading">❌ تعذّر تحميل البيانات. تأكد من اتصالك بالإنترنت.</div>`;
+    return;
+  }
+
+  const c = w.current;
+  const code = c.weather_code;
+  const icon = weatherIcons[code] || '🌡️';
+  const label = weatherLabels[code] || 'غير معروف';
+  const windDeg = c.wind_direction_10m;
+  const windArrow = (windDeg !== undefined) ? `transform:rotate(${windDeg+180}deg)` : '';
+
+  // بيانات بحرية
+  const mc = m?.current;
+  const waveH = mc?.wave_height;
+  const waveDir = mc?.wave_direction;
+  const wavePeriod = mc?.wave_period;
+  const swellH = mc?.swell_wave_height;
+  const swellDir = mc?.swell_wave_direction;
+  const swellPeriod = mc?.swell_wave_period;
+  const currentV = mc?.ocean_current_velocity;
+  const currentDir = mc?.ocean_current_direction;
+
+  // تقييم
+  const rating = seaRating(waveH||0, c.wind_speed_10m||0);
+
+  const html = `
+    <div class="wp-cards">
+
+      <!-- بطاقة الطقس الحالي -->
+      <div class="wp-card">
+        <div class="wp-card-title">🌡️ الطقس الحالي</div>
+        <div class="wp-grid">
+          <div class="wp-item">
+            <div class="emoji">${icon}</div>
+            <div class="val">${c.temperature_2m}<small>°C</small></div>
+            <div class="lbl">${label}</div>
+          </div>
+          <div class="wp-item">
+            <div class="emoji">🤔</div>
+            <div class="val">${c.apparent_temperature}<small>°C</small></div>
+            <div class="lbl">يشعر بها</div>
+          </div>
+          <div class="wp-item">
+            <div class="emoji">💧</div>
+            <div class="val">${c.relative_humidity_2m}<small>%</small></div>
+            <div class="lbl">الرطوبة</div>
+          </div>
+          <div class="wp-item">
+            <div class="emoji">☁️</div>
+            <div class="val">${c.cloud_cover}<small>%</small></div>
+            <div class="lbl">الغيوم</div>
+          </div>
+          <div class="wp-item">
+            <div class="emoji">📊</div>
+            <div class="val">${c.precipitation||0}<small>مم</small></div>
+            <div class="lbl">هطول</div>
+          </div>
+          <div class="wp-item">
+            <div class="emoji">🔽</div>
+            <div class="val">${c.pressure_msl}<small>hPa</small></div>
+            <div class="lbl">الضغط الجوي</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- بطاقة الرياح -->
+      <div class="wp-card">
+        <div class="wp-card-title">💨 الرياح</div>
+        <div style="display:flex;align-items:center;gap:16px;justify-content:center;padding:8px 0;">
+          <div style="text-align:center;">
+            <div class="wind-arrow" style="${windArrow}">🧭</div>
+            <div class="val" style="font-size:18px;margin-top:4px;">${windDirText(windDeg||0)}</div>
+          </div>
+          <div style="text-align:center;">
+            <div class="val">${c.wind_speed_10m}<small> كم/س</small></div>
+            <div class="lbl">سرعة الرياح</div>
+          </div>
+        </div>
+        <div style="text-align:center;color:#8892b0;font-size:11px;">الاتجاه: ${windDeg||'--'}°</div>
+      </div>
+
+      ${mc ? `
+      <!-- بطاقة الأمواج -->
+      <div class="wp-card">
+        <div class="wp-card-title">🌊 الأمواج (NOAA GFS)</div>
+        <div class="wp-grid">
+          <div class="wp-item">
+            <div class="emoji">📏</div>
+            <div class="val">${waveH?.toFixed(1)||'--'}<small> م</small></div>
+            <div class="lbl">ارتفاع الموج</div>
+          </div>
+          <div class="wp-item">
+            <div class="emoji">🔄</div>
+            <div class="val">${wavePeriod||'--'}<small> ث</small></div>
+            <div class="lbl">دوران الموج</div>
+          </div>
+          <div class="wp-item">
+            <div class="emoji">🧭</div>
+            <div class="val">${waveDir!==undefined?windDirText(waveDir):'--'}</div>
+            <div class="lbl">اتجاه الموج</div>
+          </div>
+          <div class="wp-item">
+            <div class="emoji">🌊</div>
+            <div class="val">${swellH?.toFixed(1)||'--'}<small> م</small></div>
+            <div class="lbl">ارتفاع الـ Swell</div>
+          </div>
+          <div class="wp-item">
+            <div class="emoji">⏱️</div>
+            <div class="val">${swellPeriod||'--'}<small> ث</small></div>
+            <div class="lbl">دوران الـ Swell</div>
+          </div>
+          <div class="wp-item">
+            <div class="emoji">🧭</div>
+            <div class="val">${swellDir!==undefined?windDirText(swellDir):'--'}</div>
+            <div class="lbl">اتجاه الـ Swell</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- بطاقة التيارات -->
+      <div class="wp-card">
+        <div class="wp-card-title">🌊 التيارات البحرية</div>
+        <div style="display:flex;align-items:center;gap:20px;justify-content:center;padding:8px 0;">
+          <div style="text-align:center;">
+            <div class="emoji">💪</div>
+            <div class="val">${currentV?.toFixed(2)||'--'}<small> م/ث</small></div>
+            <div class="lbl">سرعة التيار</div>
+          </div>
+          <div style="text-align:center;">
+            <div class="emoji">🧭</div>
+            <div class="val">${currentDir!==undefined?windDirText(currentDir):'--'}</div>
+            <div class="lbl">اتجاه التيار</div>
+          </div>
+        </div>
+      </div>
+      ` : `
+      <div class="wp-card">
+        <div class="wp-card-title">🌊 البيانات البحرية</div>
+        <div style="text-align:center;color:#8892b0;padding:8px 0;font-size:13px;">
+          ⏳ البيانات البحرية غير متاحة للموقع الحالي<br>
+          <small>(قد لا تكون متوفرة في المناطق البعيدة عن الشاطئ في هذا النموذج)</small>
+        </div>
+      </div>
+      `}
+
+      <!-- تقييم الصيد -->
+      <div class="wp-card">
+        <div class="wp-card-title">🎣 تقييم حالة البحر للصيد</div>
+        ${rating.map(r => {
+          const cls = r.startsWith('✅')?'wp-good':'wp-bad';
+          return `<div class="${cls}">${r}</div>`;
+        }).join('')}
+      </div>
+
+      <!-- المصدر والموقع -->
+      <div class="wp-source">
+        📡 بيانات نموذج NOAA GFS العالمي عبر Open-Meteo<br>
+        📍 ${lat.toFixed(4)}, ${lng.toFixed(4)} · ${new Date(c.time).toLocaleString('ar-TN')}
+      </div>
+    </div>
+  `;
+
+  weatherBody.innerHTML = html;
+}
+
+// 🚀 زر الطقس
+document.getElementById('btnWeather').onclick = async ()=>{
+  weatherPanel.classList.add('show');
+  weatherBody.innerHTML = `
+    <div class="wp-loading">
+      <div class="spin">🔄</div>
+      <p style="margin-top:10px;">جاري تحميل بيانات NOAA...</p>
+    </div>
+  `;
+
+  try {
+    const data = await fetchWeatherMarine(currentLat, currentLng);
+    renderWeatherData(data, currentLat, currentLng);
+    toast('🌤️ تم تحميل بيانات الطقس');
+  } catch(e){
+    console.error(e);
+    weatherBody.innerHTML = `
+      <div class="wp-loading">
+        ❌ فشل في تحميل البيانات<br>
+        <small style="color:#8892b0;">${e.message}</small>
+        <br><br>
+        <div class="btn" style="display:inline-flex;padding:8px 20px;" onclick="document.getElementById('btnWeather').click()">
+          🔄 إعادة المحاولة
+        </div>
+      </div>
+    `;
+  }
+};
+
+// إغلاق لوحة الطقس
+document.getElementById('closeWeather').onclick = ()=>{
+  weatherPanel.classList.remove('show');
+};
+
+// إغلاق بالضغط خارج اللوحة (اختياري)
+// يمكن إضافة click على الخريطة لإغلاق اللوحة لاحقاً
 </script>
 </body>
 </html>
