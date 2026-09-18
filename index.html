@@ -204,8 +204,6 @@ document.getElementById('btnPoints').onclick = ()=>{
 
 /* ===== 📞 زر المجموعة (WhatsApp) ===== */
 document.getElementById('btnCall').onclick = ()=>{
-  if(WHATSAPP_GROUP_URL.includes('XXXX'))
-document.getElementById('btnCall').onclick = ()=>{
   if(WHATSAPP_GROUP_URL.includes('XXXX')){
     toast('⚠️ ضع رابط الغروب في إعدادات الكود أولاً!');
     return;
@@ -218,30 +216,12 @@ document.getElementById('btnCall').onclick = ()=>{
 document.getElementById('btnShare').onclick = ()=>{
   if(!myMarker){ toast('⏳ انتظر إشارة GPS...'); return; }
   const ll=myMarker.getLatLng();
-  const msg=encodeURIComponent(
-    '🎣 موقعي الآن (Redline Fishing):\n'+
-    '📍 '+ll.lat.toFixed(5)+', '+ll.lng.toFixed(5)+'\n'+
-    '🗺️ https://maps.google.com/?q='+ll.lat+','+ll.lng
-  );
+  const msg=encodeURIComponent('🎣 موقعي الآن (Redline Fishing):\n📍 '+ll.lat.toFixed(5)+', '+ll.lng.toFixed(5)+'\n🗺️ https://maps.google.com/?q='+ll.lat+','+ll.lng);
   window.open('https://wa.me/?text='+msg,'_blank');
-  toast('📤 تم تجهيز موقعك للإرسال للغروب');
+  toast('📤 تم تجهيز موقعك للإرسال');
 };
 
-/* ===== تصدير GPX ===== */
-function exportGPX(){
-  if(trackPoints.length<2){ toast('⚠️ لا يوجد مسار مسجّل'); return; }
-  let gpx='<?xml version="1.0"?><gpx version="1.1"><trk><name>Redline Track</name><trkseg>';
-  trackPoints.forEach(p=>gpx+='<trkpt lat="'+p[0]+'" lon="'+p[1]+'"></trkpt>');
-  gpx+='</trkseg></trk></gpx>';
-  const blob=new Blob([gpx],{type:'application/gpx+xml'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob);
-  a.download='redline-track.gpx';
-  a.click();
-  toast('📥 تم تصدير المسار GPX');
-}
-
-/* ===== إخفاء شاشة البداية عند اللمس ===== */
+/* ===== إخفاء شاشة البداية ===== */
 document.getElementById('splash').onclick = ()=>{
   document.getElementById('splash').style.display='none';
 };
