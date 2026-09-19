@@ -1,816 +1,124 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#f4f7fb">
-<title>Redline Fishing</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
-<style>
-*{box-sizing:border-box}
-:root{
-  color-scheme:light;
-  --bg:#f4f7fb;--card:#fff;--soft:#eef4fa;--text:#193149;
-  --muted:#5a7086;--line:#dae4ee;--accent:#176eae;
-  --shadow:0 8px 30px #18345120;
-}
-body.dark{
-  color-scheme:dark;
-  --bg:#111c29;--card:#192a3b;--soft:#22364b;
-  --text:#edf5ff;--muted:#b3c5d8;--line:#37506a;--accent:#89c8ff;
-}
-body{margin:0;font-family:Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text)}
-button,input{font:inherit}
-button{cursor:pointer;touch-action:manipulation}
-button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
-button:disabled{opacity:.55;cursor:wait}
-svg.ico{width:22px;height:22px;flex-shrink:0;vertical-align:middle}
-header{
-  position:fixed;inset:0 0 auto;height:70px;z-index:1000;
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:10px 14px;background:var(--card);border-bottom:1px solid var(--line);
-}
-.brand{font-size:16px;font-weight:bold;direction:ltr;white-space:nowrap}
-.brand span{color:#d32f2f}
-#coords{font-size:10px;color:var(--muted);direction:ltr;margin-top:5px}
-.header-actions{display:flex;gap:7px}
-.icon-btn,.language{
-  border:1px solid var(--line);background:var(--card);color:var(--text);
-  min-height:42px;border-radius:12px;padding:9px;display:flex;align-items:center;justify-content:center;
-}
-.language{min-width:48px;font-weight:bold;color:var(--accent)}
-#map{position:fixed;inset:70px 0 0;background:#dae8ee;z-index:1}
-body.dark .leaflet-tile-pane{filter:brightness(.65) saturate(.65)}
-#mapControls{position:fixed;top:84px;left:12px;z-index:900;display:grid;gap:8px}
-#mapControls button{box-shadow:var(--shadow);width:44px;height:44px}
-#toolbar{
-  position:fixed;bottom:calc(12px + env(safe-area-inset-bottom,0px));
-  left:12px;right:12px;z-index:1000;display:flex;gap:5px;
-  padding:8px;background:var(--card);border:1px solid var(--line);
-  border-radius:20px;box-shadow:var(--shadow);overflow-x:auto;scrollbar-width:thin;
-}
-.tool{
-  flex:1 0 68px;min-height:62px;border:0;border-radius:12px;padding:8px 6px;
-  background:transparent;color:var(--muted);display:flex;flex-direction:column;
-  align-items:center;justify-content:center;gap:7px;font-size:11px;
-}
-.tool.active,.tool:hover{background:var(--soft);color:var(--accent)}
-#searchBox{
-  position:fixed;top:80px;left:66px;right:12px;z-index:1100;
-  background:var(--card);padding:10px;border:1px solid var(--line);
-  border-radius:15px;box-shadow:var(--shadow);
-}
-.search-row{display:flex;gap:6px}
-input{min-width:0;flex:1;width:100%;padding:11px;background:var(--soft);
-  border:1px solid var(--line);border-radius:10px;color:var(--text)}
-.primary{border:0;border-radius:10px;background:#176eae;color:white;padding:10px 14px}
-#searchResults{max-height:240px;overflow:auto}
-.result{display:block;width:100%;text-align:start;padding:12px;background:transparent;
-  color:var(--text);border:0;border-bottom:1px solid var(--line);line-height:1.6}
-.result:hover{background:var(--soft)}
-#trackInfo{
-  position:fixed;top:84px;right:12px;z-index:900;padding:11px;
-  background:var(--card);border:1px solid var(--line);border-radius:12px;
-  box-shadow:var(--shadow);font-size:12px;line-height:1.8;
-}
-[hidden]{display:none!important}
-.panel{
-  position:fixed;bottom:0;left:0;right:0;z-index:2000;max-height:82vh;
-  max-height:82dvh;overflow:auto;overscroll-behavior:contain;
-  background:var(--bg);border:1px solid var(--line);border-radius:23px 23px 0 0;
-  box-shadow:0 -8px 40px #18345130;padding-bottom:env(safe-area-inset-bottom,0px);
-}
-.panel-head{position:sticky;top:0;z-index:2;background:var(--card);padding:12px 16px;
-  display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
-.panel-head h2{margin:0;font-size:16px}
-.panel-body{padding:15px;display:grid;gap:13px}
-.card{padding:16px;background:var(--card);border:1px solid var(--line);border-radius:17px;min-width:0}
-.card h3{font-size:13px;color:var(--accent);margin:0 0 13px;display:flex;gap:8px;align-items:center}
-.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
-.metric{text-align:center;background:var(--soft);padding:14px 8px;border-radius:12px;min-width:0}
-.value{font-size:25px;font-weight:bold;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
-.value small{font-size:12px;font-weight:normal;color:var(--muted);margin-inline-start:4px}
-.label{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5}
-.hero{display:flex;justify-content:space-between;align-items:center;gap:15px}
-.hero .temperature{font-size:43px;font-weight:bold;direction:ltr}
-.hero .ico{width:43px;height:43px;color:var(--accent)}
-.muted{color:var(--muted);font-size:12px;line-height:1.8}
-.notice{padding:12px;border-radius:12px;background:var(--soft);color:var(--muted);font-size:12px;line-height:1.8}
-.loading{text-align:center;padding:30px;color:var(--muted)}
-.chart-wrap{height:230px;position:relative}
-.table-wrap{overflow:auto;max-height:320px}
-table{border-collapse:collapse;width:100%;font-size:12px;white-space:nowrap}
-th,td{text-align:center;padding:11px 9px;border-bottom:1px solid var(--line)}
-th{background:var(--soft);color:var(--muted);position:sticky;top:0}
-.action{
-  width:100%;display:flex;align-items:center;gap:12px;text-align:start;
-  border:1px solid var(--line);background:var(--card);color:var(--text);
-  padding:15px;border-radius:13px;
-}
-.action small{display:block;color:var(--muted);font-size:11px;margin-top:5px}
-.danger{color:#c43a35;border-color:#c43a3550}
-.point-row{display:flex;align-items:center;gap:9px}
-.point-row .action{flex:1}
-#toast{
-  position:fixed;top:82px;left:50%;transform:translateX(-50%);z-index:5000;
-  max-width:calc(100vw - 30px);width:max-content;background:var(--text);color:var(--card);
-  padding:12px 18px;border-radius:15px;box-shadow:var(--shadow);text-align:center;font-size:13px;
-}
-.leaflet-bottom.leaflet-left{bottom:115px}
-.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--card);color:var(--text)}
-.leaflet-popup-content{min-width:190px;line-height:1.7}
-.popup-row{display:flex;justify-content:space-between;gap:20px;border-bottom:1px solid var(--line);padding:6px 0}
-.popup-row span{color:var(--muted)}
-@media(min-width:760px){
-  #toolbar{max-width:920px;margin:auto}
-  .panel{left:auto;right:18px;bottom:110px;width:460px;
-    max-height:calc(100vh - 195px);border-radius:22px}
-  #searchBox{right:auto;width:390px}
-}
-@media(max-width:370px){.brand{font-size:13px}header{padding:8px}.header-actions{gap:4px}}
-@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Redline Fishing Pro</title>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root { --bg: #f2f5f9; --card: #fff; --text: #203449; --accent: #d73546; }
+        body.dark-mode { --bg: #1a1a1a; --card: #2d2d2d; --text: #f0f0f0; }
+        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; transition: 0.3s; }
+        header { padding: 15px; background: var(--card); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        #map { position: fixed; top: 70px; bottom: 70px; width: 100%; z-index: 1; }
+        nav { position: fixed; bottom: 0; width: 100%; height: 70px; display: flex; background: var(--card); align-items: center; justify-content: space-around; z-index: 1000; box-shadow: 0 -2px 5px rgba(0,0,0,0.1); }
+        button { padding: 8px 15px; border-radius: 8px; border: none; background: var(--accent); color: white; cursor: pointer; }
+        .modal { display: none; position: fixed; top: 20%; left: 10%; width: 80%; background: var(--card); padding: 20px; z-index: 2000; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.3); }
+    </style>
 </head>
 <body>
+
 <header>
-  <div>
-    <div class="brand">Redline <span>Fishing</span></div>
-    <div id="coords">—</div>
-  </div>
-  <div class="header-actions">
-    <button id="btnLanguage" class="language">FR</button>
-    <button id="btnNight" class="icon-btn" data-icon="moon" data-title="night"></button>
-  </div>
+    <div id="title">Redline Fishing</div>
+    <div>
+        <button id="langBtn">Français</button>
+        <button id="themeBtn">🌙</button>
+    </div>
 </header>
 
 <div id="map"></div>
 
-<div id="mapControls">
-  <button id="btnSearch" class="icon-btn" data-icon="search" data-title="search"></button>
-  <button id="btnFullscreen" class="icon-btn" data-icon="fullscreen" data-title="fullscreen"></button>
-</div>
-
-<div id="searchBox" hidden>
-  <div class="search-row">
-    <input id="searchInput" type="search" data-placeholder="searchPlaceholder">
-    <button id="searchBtn" class="primary" data-i18n="search"></button>
-  </div>
-  <div id="searchResults"></div>
-</div>
-
-<div id="trackInfo" hidden></div>
-
-<nav id="toolbar">
-  <button id="btnLocate" class="tool" data-icon="locate" data-label="locate"></button>
-  <button id="btnWeather" class="tool" data-icon="weather" data-label="weather"></button>
-  <button id="btnSea" class="tool" data-icon="sea" data-label="sea"></button>
-  <button id="btnTrack" class="tool" data-icon="track" data-label="track"></button>
-  <button id="btnSave" class="tool" data-icon="save" data-label="save"></button>
-  <button id="btnPoints" class="tool" data-icon="points" data-label="points"></button>
-  <button id="btnExport" class="tool" data-icon="export" data-label="export"></button>
-  <button id="btnCall" class="tool" data-icon="group" data-label="group"></button>
-  <button id="btnShare" class="tool" data-icon="share" data-label="share"></button>
+<nav>
+    <button id="locateBtn">📍</button>
+    <button id="importBtn">📁</button>
+    <button id="exportBtn">📤</button>
+    <input type="file" id="fileInput" style="display:none" accept=".json">
 </nav>
 
-<section id="weatherPanel" class="panel" hidden aria-labelledby="weatherTitle">
-  <div class="panel-head">
-    <h2 id="weatherTitle" data-i18n="weatherTitle"></h2>
-    <button class="icon-btn" data-close="weatherPanel" data-icon="close" data-title="close"></button>
-  </div>
-  <div id="weatherBody" class="panel-body"></div>
-</section>
-
-<section id="pointsPanel" class="panel" hidden aria-labelledby="pointsTitle">
-  <div class="panel-head">
-    <h2 id="pointsTitle" data-i18n="points"></h2>
-    <button class="icon-btn" data-close="pointsPanel" data-icon="close" data-title="close"></button>
-  </div>
-  <div id="pointsBody" class="panel-body"></div>
-</section>
-
-<section id="exportPanel" class="panel" hidden aria-labelledby="exportTitle">
-  <div class="panel-head">
-    <h2 id="exportTitle" data-i18n="exportTitle"></h2>
-    <button class="icon-btn" data-close="exportPanel" data-icon="close" data-title="close"></button>
-  </div>
-  <div class="panel-body">
-    <button id="exportJSON" class="action">
-      <span data-icon="export"></span><span>JSON<small data-i18n="allData"></small></span>
-    </button>
-    <button id="exportCSV" class="action">
-      <span data-icon="points"></span><span>CSV<small data-i18n="pointsOnly"></small></span>
-    </button>
-    <button id="exportGPX" class="action">
-      <span data-icon="track"></span><span>GPX<small data-i18n="allData"></small></span>
-    </button>
-    <button id="clearData" class="action danger">
-      <span data-icon="trash"></span><span data-i18n="clearData"></span>
-    </button>
-  </div>
-</section>
-
-<div id="toast" role="status" hidden></div>
-
+<!-- ملفات JS -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-
 <script>
-"use strict";
+    let map = L.map('map').setView([36.77, 10.22], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-/* إعدادات: ضع رابط مجموعتك هنا */
-const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/XXXXXXXXXXXXXXX";
+    let points = JSON.parse(localStorage.getItem('fishingPoints')) || [];
 
-const $ = id => document.getElementById(id);
-function read(key,fallback){
-  try{return JSON.parse(localStorage.getItem(key)) ?? fallback;}
-  catch{return fallback;}
-}
-function store(key,value){
-  try{localStorage.setItem(key,JSON.stringify(value));return true;}
-  catch{toast(t("storageError"));return false;}
-}
-const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g,
-  c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    // --- الوظائف الرئيسية ---
 
-let lang=read("redline_language","ar");
-if(!["ar","fr"].includes(lang))lang="ar";
-let dark=read("redline_dark",false);
-
-const translations={
-ar:{
-  locate:"موقعي",weather:"الطقس",sea:"البحر",track:"مسار",save:"حفظ",
-  points:"نقاطي",export:"تصدير",group:"المجموعة",share:"مشاركة",
-  search:"بحث",searchPlaceholder:"مدينة، شاطئ أو ميناء...",
-  fullscreen:"ملء الشاشة",night:"الوضع الليلي",close:"إغلاق",
-  weatherTitle:"الطقس والأحوال البحرية",exportTitle:"تصدير البيانات",
-  allData:"النقاط والمسارات المحفوظة",pointsOnly:"النقاط فقط",
-  clearData:"مسح النقاط والمسارات",confirmClear:"تمسح النقاط والمسارات الكل؟ لا يمكن التراجع.",
-  loading:"جاري التحميل...",error:"تعذّر التحميل. أعد المحاولة.",
-  mapError:"تعذّر تحميل مكتبة الخريطة. تحقق من الإنترنت وأعد فتح الصفحة.",
-  storageError:"تعذّر حفظ البيانات على هذا الجهاز.",
-  noResults:"لا توجد نتائج",enterSearch:"اكتب اسم مكان",
-  gpsWait:"الموقع غير متاح بعد. فعّل GPS واسمح بالوصول للموقع.",
-  gpsError:"تعذّر تحديد الموقع. تحقق من الإذن وGPS واتصال HTTPS.",
-  gpsUnsupported:"تحديد الموقع غير مدعوم هنا.",accuracy:"الدقة",
-  trackStart:"بدأ تسجيل المسار",trackStop:"توقف المسار وتم حفظه",
-  trackEmpty:"توقف المسار؛ لا توجد نقاط كافية لحفظه",
-  samples:"نقاط المسار",distance:"المسافة",km:"كم",m:"م",seconds:"ث",
-  point:"نقطة صيد",pointName:"اسم نقطة الصيد",saved:"تم الحفظ",
-  noPoints:"لا توجد نقاط محفوظة",noData:"لا توجد بيانات للتصدير",
-  deleted:"تم المسح",downloaded:"تم تجهيز ملف التصدير",
-  groupMissing:"ضع رابط مجموعة واتساب داخل الإعدادات أولاً.",
-  locationMessage:"موقعي — Redline Fishing",
-  current:"الطقس الحالي",temperature:"حرارة الهواء",feels:"المحسوسة",
-  humidity:"الرطوبة",clouds:"الغيوم",rain:"الهطول",pressure:"الضغط الجوي",
-  wind:"الرياح",windSpeed:"سرعة الرياح",direction:"الاتجاه",
-  marine:"الأحوال البحرية",waveHeight:"ارتفاع الموج",wavePeriod:"فترة الموج",
-  waveDirection:"اتجاه الموج",swell:"ارتفاع الموج الطويل",
-  currentSpeed:"سرعة التيار",currentDirection:"اتجاه التيار",
-  marineMissing:"البيانات البحرية غير متاحة لهذا الموقع.",
-  forecast:"توقعات الساعات القادمة",hour:"الوقت",rainChance:"احتمال المطر",
-  forecastMissing:"تعذّر تحميل التوقعات الساعية.",
-  source:"المصدر: Open-Meteo",time:"وقت البيانات",timezone:"المنطقة الزمنية",
-  disclaimer:"هذه بيانات نماذج وتوقعات، وليست تأكيداً للحالة الفعلية أو ضماناً لسلامة الإبحار.",
-  defaultLocation:"موقع افتراضي: لم يتم تحديد موقعك بعد.",
-  air:"الهواء",seaTime:"البحر",unknown:"غير متاح",sun:"الشمس",
-  sunrise:"الشروق",sunset:"الغروب",uv:"أقصى مؤشر UV",
-  clear:"صافي",partly:"غائم جزئياً",overcast:"غائم",fog:"ضباب",
-  drizzle:"رذاذ",rainy:"مطر",snow:"ثلوج",storm:"عاصفة رعدية",
-  directions:["شمال","شمال شرقي","شرق","جنوب شرقي","جنوب","جنوب غربي","غرب","شمال غربي"]
-},
-fr:{
-  locate:"Position",weather:"Météo",sea:"Mer",track:"Parcours",save:"Enregistrer",
-  points:"Mes points",export:"Exporter",group:"Groupe",share:"Partager",
-  search:"Chercher",searchPlaceholder:"Ville, plage ou port...",
-  fullscreen:"Plein écran",night:"Mode nuit",close:"Fermer",
-  weatherTitle:"Météo et conditions marines",exportTitle:"Exporter les données",
-  allData:"Points et parcours enregistrés",pointsOnly:"Points uniquement",
-  clearData:"Effacer les points et parcours",confirmClear:"Effacer tous les points et parcours ? Action irréversible.",
-  loading:"Chargement...",error:"Chargement impossible. Réessayez.",
-  mapError:"Impossible de charger la carte. Vérifiez Internet et rechargez la page.",
-  storageError:"Impossible d'enregistrer les données sur cet appareil.",
-  noResults:"Aucun résultat",enterSearch:"Saisissez un lieu",
-  gpsWait:"Position indisponible. Activez le GPS et autorisez la localisation.",
-  gpsError:"Localisation impossible. Vérifiez les autorisations, le GPS et HTTPS.",
-  gpsUnsupported:"Géolocalisation indisponible ici.",accuracy:"Précision",
-  trackStart:"Enregistrement du parcours démarré",trackStop:"Parcours arrêté et enregistré",
-  trackEmpty:"Parcours arrêté : pas assez de points pour l'enregistrer",
-  samples:"Points du parcours",distance:"Distance",km:"km",m:"m",seconds:"s",
-  point:"Point de pêche",pointName:"Nom du point de pêche",saved:"Enregistré",
-  noPoints:"Aucun point enregistré",noData:"Aucune donnée à exporter",
-  deleted:"Données effacées",downloaded:"Fichier d'export préparé",
-  groupMissing:"Ajoutez d'abord le lien du groupe WhatsApp dans les paramètres.",
-  locationMessage:"Ma position — Redline Fishing",
-  current:"Météo actuelle",temperature:"Température de l'air",feels:"Ressenti",
-  humidity:"Humidité",clouds:"Couverture nuageuse",rain:"Précipitations",pressure:"Pression",
-  wind:"Vent",windSpeed:"Vitesse du vent",direction:"Direction",
-  marine:"Conditions marines",waveHeight:"Hauteur des vagues",wavePeriod:"Période des vagues",
-  waveDirection:"Direction des vagues",swell:"Hauteur de la houle",
-  currentSpeed:"Vitesse du courant",currentDirection:"Direction du courant",
-  marineMissing:"Données marines indisponibles pour ce lieu.",
-  forecast:"Prévisions horaires",hour:"Heure",rainChance:"Risque de pluie",
-  forecastMissing:"Prévisions horaires indisponibles.",
-  source:"Source : Open-Meteo",time:"Heure des données",timezone:"Fuseau horaire",
-  disclaimer:"Données issues de modèles et de prévisions : elles ne confirment pas les conditions réelles et ne garantissent pas la sécurité en mer.",
-  defaultLocation:"Position par défaut : votre position n'a pas encore été déterminée.",
-  air:"Atmosphère",seaTime:"Mer",unknown:"Indisponible",sun:"Soleil",
-  sunrise:"Lever",sunset:"Coucher",uv:"Indice UV maximal",
-  clear:"Ciel dégagé",partly:"Partiellement nuageux",overcast:"Couvert",fog:"Brouillard",
-  drizzle:"Bruine",rainy:"Pluie",snow:"Neige",storm:"Orage",
-  directions:["N","NE","E","SE","S","SO","O","NO"]
-}
-};
-const t=key=>translations[lang][key] ?? key;
-const paths={
-locate:'<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>',
-weather:'<path d="M7 18a4 4 0 1 1 1-8 5 5 0 0 1 9 2 3 3 0 0 1 0 6H7M5 2v2M2 6l2 1m6-4-1 2"/>',
-sea:'<path d="M2 7q3-4 6 0t6 0t6 0M2 12q3-4 6 0t6 0t6 0M2 17q3-4 6 0t6 0t6 0"/>',
-track:'<circle cx="5" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 5h8a4 4 0 0 1 0 8H9a3 3 0 0 0 0 6h8"/>',
-save:'<path d="M3 3h14l4 4v14H3ZM7 3v6h10V3M7 21v-8h10v8"/>',
-points:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M9 10h6m-6 5h6"/>',
-export:'<path d="M12 16V3m-5 5 5-5 5 5M4 15v6h16v-6"/>',
-group:'<circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3m1-16a3 3 0 0 1 0 6m2 4a5 5 0 0 1 3 5"/>',
-share:'<circle cx="6" cy="12" r="3"/><circle cx="18" cy="5" r="3"/><circle cx="18" cy="19" r="3"/><path d="m9 10 6-4m-6 8 6 4"/>',
-moon:'<path d="M20 14A9 9 0 0 1 10 3a9 9 0 1 0 10 11Z"/>',
-fullscreen:'<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/>',
-search:'<circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/>',
-close:'<path d="m6 6 12 12M6 18 18 6"/>',
-trash:'<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>',
-wind:'<path d="M3 8h12a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h5"/>',
-sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1"/>'
-};
-function icon(name){
-  return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-    stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"
-    aria-hidden="true">${paths[name]||paths.weather}</svg>`;
-}
-let toastTimer;
-function toast(message){
-  $("toast").textContent=message;$("toast").hidden=false;
-  clearTimeout(toastTimer);toastTimer=setTimeout(()=>$("toast").hidden=true,3500);
-}
-function closePanels(){
-  document.querySelectorAll(".panel").forEach(el=>el.hidden=true);
-}
-function openPanel(id){
-  closePanels();$("searchBox").hidden=true;$(id).hidden=false;
-}
-document.querySelectorAll("[data-close]").forEach(button=>{
-  button.onclick=()=>$(button.dataset.close).hidden=true;
-});
-document.addEventListener("keydown",e=>{
-  if(e.key==="Escape"){closePanels();$("searchBox").hidden=true;}
-});
-
-let map=null,cluster=null,myMarker=null,accuracyCircle=null;
-let gpsPosition=null,gpsWatch=null,trackOn=false,trackPoints=[],trackLine=null,trackDist=0;
-let weatherChart=null,weatherCache=null,weatherBusy=false,weatherRequest=0;
-let searchController=null;
-let points=read("redline_points",[]);
-let tracks=read("redline_tracks",[]);
-if(!Array.isArray(points))points=[];
-points=points.filter(p=>p&&Number.isFinite(p.lat)&&Number.isFinite(p.lng));
-if(!Array.isArray(tracks))tracks=[];
-let seaOn=read("redline_seaOn",false);
-let baseLayer,seaLayer;
-
-function applyLanguage(){
-  document.documentElement.lang=lang;
-  document.documentElement.dir=lang==="ar"?"rtl":"ltr";
-  $("btnLanguage").textContent=lang==="ar"?"FR":"عربي";
-  $("btnLanguage").setAttribute("aria-label",lang==="ar"?"Français":"العربية");
-  document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));
-  document.querySelectorAll("[data-placeholder]").forEach(el=>{
-    el.placeholder=t(el.dataset.placeholder);el.setAttribute("aria-label",el.placeholder);
-  });
-  document.querySelectorAll("[data-icon]").forEach(el=>{
-    el.innerHTML=icon(el.dataset.icon)+(el.dataset.label?`<span>${escapeHTML(t(el.dataset.label))}</span>`:"");
-  });
-  document.querySelectorAll("[data-title]").forEach(el=>{
-    el.title=t(el.dataset.title);el.setAttribute("aria-label",el.title);
-  });
-  $("searchResults").replaceChildren();
-  if(searchController)searchController.abort();
-  updateCoords();updateTrackInfo();renderPoints();
-  if(map){map.closePopup();renderMarkers();}
-  if(weatherBusy)$("weatherBody").innerHTML=`<div class="loading">${t("loading")}</div>`;
-  else if(weatherCache)renderWeather(weatherCache);
-  else $("weatherBody").innerHTML="";
-}
-function applyTheme(){
-  document.body.classList.toggle("dark",dark);
-  $("btnNight").setAttribute("aria-pressed",String(dark));
-  document.querySelector('meta[name="theme-color"]').content=dark?"#111c29":"#f4f7fb";
-  if(weatherCache&&!weatherBusy)renderWeather(weatherCache);
-}
-$("btnLanguage").onclick=()=>{
-  lang=lang==="ar"?"fr":"ar";store("redline_language",lang);applyLanguage();
-};
-$("btnNight").onclick=()=>{
-  dark=!dark;store("redline_dark",dark);applyTheme();
-};
-function updateCoords(){
-  $("coords").textContent=gpsPosition
-    ?`${gpsPosition.lat.toFixed(5)}, ${gpsPosition.lng.toFixed(5)} · ${t("accuracy")} ±${Math.round(gpsPosition.accuracy)} ${t("m")}`
-    :"36.77000, 10.22000";
-}
-function updateTrackInfo(){
-  $("trackInfo").hidden=!trackOn;
-  $("trackInfo").textContent=`${t("distance")}: ${trackDist.toFixed(2)} ${t("km")} · ${t("samples")}: ${trackPoints.length}`;
-  $("btnTrack").classList.toggle("active",trackOn);
-  $("btnTrack").setAttribute("aria-pressed",String(trackOn));
-}
-function applySea(){
-  if(!map.hasLayer(baseLayer))baseLayer.addTo(map);
-  if(seaOn){if(!map.hasLayer(seaLayer))seaLayer.addTo(map);}
-  else if(map.hasLayer(seaLayer))map.removeLayer(seaLayer);
-  $("btnSea").classList.toggle("active",!!seaOn);
-  $("btnSea").setAttribute("aria-pressed",String(!!seaOn));
-}
-function renderMarkers(){
-  if(!cluster)return;
-  cluster.clearLayers();
-  points.forEach((p,i)=>{
-    const content=document.createElement("div");
-    content.textContent=`${p.name||t("point")+" "+(i+1)} — ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
-    cluster.addLayer(L.marker([p.lat,p.lng]).bindPopup(content));
-  });
-}
-function startGPS(){
-  if(!navigator.geolocation){toast(t("gpsUnsupported"));return;}
-  if(gpsWatch!==null)return;
-  gpsWatch=navigator.geolocation.watchPosition(pos=>{
-    const c=pos.coords,first=!gpsPosition;
-    gpsPosition={lat:c.latitude,lng:c.longitude,accuracy:c.accuracy};
-    updateCoords();
-    const ll=[c.latitude,c.longitude];
-    if(!myMarker){
-      myMarker=L.marker(ll).addTo(map);
-      accuracyCircle=L.circle(ll,{radius:c.accuracy,color:"#176eae",fillOpacity:.08}).addTo(map);
-    }else{
-      myMarker.setLatLng(ll);accuracyCircle.setLatLng(ll).setRadius(c.accuracy);
-    }
-    if(first)map.setView(ll,15);
-    if(trackOn){
-      if(trackPoints.length)trackDist+=map.distance(trackPoints.at(-1),ll)/1000;
-      trackPoints.push(ll);
-      if(!trackLine)trackLine=L.polyline(trackPoints,{color:"#d32f2f",weight:4}).addTo(map);
-      else trackLine.setLatLngs(trackPoints);
-      updateTrackInfo();
-    }
-  },()=>toast(t("gpsError")),{enableHighAccuracy:true,maximumAge:1000,timeout:15000});
-}
-$("btnLocate").onclick=()=>{
-  if(!map)return;
-  if(gpsPosition)map.setView([gpsPosition.lat,gpsPosition.lng],16);
-  else{startGPS();toast(t("gpsWait"));}
-};
-$("btnSea").onclick=()=>{
-  if(!map)return;seaOn=!seaOn;store("redline_seaOn",seaOn);applySea();
-};
-$("btnTrack").onclick=()=>{
-  if(!map)return;
-  if(!trackOn){
-    if(!gpsPosition){toast(t("gpsWait"));return;}
-    trackOn=true;trackDist=0;trackPoints=[];
-    if(trackLine){map.removeLayer(trackLine);trackLine=null;}
-    toast(t("trackStart"));
-  }else{
-    trackOn=false;
-    if(trackPoints.length>1){
-      tracks.push({date:new Date().toISOString(),distance:trackDist,points:trackPoints.slice()});
-      if(store("redline_tracks",tracks))toast(t("trackStop"));
-    }else toast(t("trackEmpty"));
-  }
-  updateTrackInfo();
-};
-$("btnSave").onclick=()=>{
-  if(!gpsPosition){toast(t("gpsWait"));return;}
-  const name=prompt(t("pointName"),`${t("point")} ${points.length+1}`);
-  if(name===null)return;
-  points.push({lat:gpsPosition.lat,lng:gpsPosition.lng,name:name.trim()||t("point")});
-  const saved=store("redline_points",points);renderMarkers();renderPoints();
-  if(saved)toast(t("saved"));
-};
-function renderPoints(){
-  const body=$("pointsBody");body.replaceChildren();
-  if(!points.length){body.textContent=t("noPoints");return;}
-  points.forEach((p,i)=>{
-    const button=document.createElement("button");button.className="action";
-    button.innerHTML=icon("locate");
-    const text=document.createElement("span");text.textContent=p.name||`${t("point")} ${i+1}`;
-    const small=document.createElement("small");
-    small.dir="ltr";small.textContent=`${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
-    text.appendChild(small);button.appendChild(text);
-    button.onclick=()=>{if(map){closePanels();map.setView([p.lat,p.lng],16);}};
-    body.appendChild(button);
-  });
-}
-$("btnPoints").onclick=()=>{renderPoints();openPanel("pointsPanel");};
-$("btnExport").onclick=()=>openPanel("exportPanel");
-$("btnCall").onclick=()=>{
-  if(WHATSAPP_GROUP_URL.includes("XXXX")){toast(t("groupMissing"));return;}
-  window.open(WHATSAPP_GROUP_URL,"_blank","noopener,noreferrer");
-};
-$("btnShare").onclick=()=>{
-  if(!gpsPosition){toast(t("gpsWait"));return;}
-  const {lat,lng}=gpsPosition;
-  const message=`${t("locationMessage")}\n${lat.toFixed(5)}, ${lng.toFixed(5)}\nhttps://maps.google.com/?q=${lat},${lng}`;
-  window.open("https://wa.me/?text="+encodeURIComponent(message),"_blank","noopener,noreferrer");
-};
-$("btnFullscreen").onclick=async()=>{
-  try{
-    if(document.fullscreenElement)await document.exitFullscreen();
-    else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();
-    if(map)setTimeout(()=>map.invalidateSize(),150);
-  }catch{toast(t("error"));}
-};
-$("btnSearch").onclick=()=>{
-  const open=$("searchBox").hidden;closePanels();$("searchBox").hidden=!open;
-  if(open)$("searchInput").focus();
-};
-$("searchBtn").onclick=async()=>{
-  const q=$("searchInput").value.trim();if(!q){toast(t("enterSearch"));return;}
-  if(searchController)searchController.abort();
-  searchController=new AbortController();
-  const controller=searchController,body=$("searchResults");
-  body.textContent=t("loading");
-  try{
-    const response=await fetch(
-      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&accept-language=${lang}`,
-      {signal:controller.signal});
-    if(!response.ok)throw Error();
-    const results=await response.json();body.replaceChildren();
-    if(!results.length){body.textContent=t("noResults");return;}
-    results.forEach(r=>{
-      const button=document.createElement("button");button.className="result";
-      button.textContent=r.display_name;
-      button.onclick=()=>{
-        if(!map)return;
-        map.setView([Number(r.lat),Number(r.lon)],15);
-        $("searchBox").hidden=true;
-        const content=document.createElement("div");content.textContent=r.display_name;
-        L.popup().setLatLng([Number(r.lat),Number(r.lon)]).setContent(content).openOn(map);
-      };
-      body.appendChild(button);
+    // 1. اختيار الموقع من الخريطة
+    map.on('click', function(e) {
+        let name = prompt("أدخل اسم نقطة الصيد:");
+        if (name) {
+            let newPoint = { id: Date.now(), name, lat: e.latlng.lat, lon: e.latlng.lng };
+            points.push(newPoint);
+            saveAndRender();
+        }
     });
-  }catch(e){if(e.name!=="AbortError")body.textContent=t("error");}
-};
-$("searchInput").addEventListener("keydown",e=>{
-  if(e.key==="Enter")$("searchBtn").click();
-});
 
-/* بيانات الطقس: نفس الخدمات الأساسية، مع معالجة القيم الغائبة */
-async function getJSON(url){
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),18000);
-  try{
-    const response=await fetch(url,{signal:controller.signal});
-    if(!response.ok)throw Error("HTTP "+response.status);
-    const data=await response.json();if(data.error)throw Error("API");
-    return data;
-  }finally{clearTimeout(timer);}
-}
-async function fetchWeatherMarine(lat,lng){
-  const location=`latitude=${lat}&longitude=${lng}&timezone=auto`;
-  const [weather,marine]=await Promise.all([
-    getJSON(`https://api.open-meteo.com/v1/forecast?${location}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,pressure_msl,cloud_cover`),
-    getJSON(`https://marine-api.open-meteo.com/v1/marine?${location}&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,ocean_current_velocity,ocean_current_direction`).catch(()=>null)
-  ]);
-  if(!weather.current)throw Error("Missing weather");
-  return {weather,marine};
-}
-function fetchHourly(lat,lng){
-  return getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,precipitation_probability,wind_speed_10m,weather_code&timezone=auto&forecast_hours=24`);
-}
-function fetchSun(lat,lng){
-  return getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=sunrise,sunset,uv_index_max&timezone=auto&forecast_days=1`);
-}
-const valid=n=>typeof n==="number"&&Number.isFinite(n);
-const num=(n,d=1)=>valid(n)?String(Number(n.toFixed(d))):"—";
-function direction(value){
-  return valid(value)?t("directions")[Math.round(((value%360)+360)%360/45)%8]:"—";
-}
-function weatherLabel(code){
-  if(!valid(code))return t("unknown");
-  if(code===0)return t("clear");
-  if(code<=2)return t("partly");
-  if(code===3)return t("overcast");
-  if(code===45||code===48)return t("fog");
-  if(code>=51&&code<=57)return t("drizzle");
-  if((code>=71&&code<=77)||code===85||code===86)return t("snow");
-  if(code>=95)return t("storm");
-  return t("rainy");
-}
-function unit(data,key,fallback=""){
-  return escapeHTML(data?.current_units?.[key] ?? fallback);
-}
-function metric(label,value,suffix=""){
-  return `<div class="metric"><div class="value">${escapeHTML(value)}<small>${suffix}</small></div><div class="label">${escapeHTML(label)}</div></div>`;
-}
-function card(title,content,name="weather"){
-  return `<div class="card"><h3>${icon(name)}${escapeHTML(title)}</h3>${content}</div>`;
-}
-function timeText(value){
-  return typeof value==="string"?escapeHTML(value.replace("T"," · ")):"—";
-}
-function renderWeather(data){
-  if(weatherChart){weatherChart.destroy();weatherChart=null;}
-  const {weather:w,marine:m,hourly:h,sun,lat,lng,isDefault}=data;
-  const c=w.current,mc=m?.current;
-  let html=isDefault?`<div class="notice">${t("defaultLocation")}</div>`:"";
-  html+=card(t("current"),`
-    <div class="hero">
-      <div><div class="temperature">${num(c.temperature_2m)}<small>°C</small></div>
-      <div class="muted">${weatherLabel(c.weather_code)}</div></div>${icon("weather")}
-    </div>
-    <div class="muted" dir="ltr">${lat.toFixed(4)}, ${lng.toFixed(4)}</div>
-    <div class="grid" style="margin-top:14px">
-      ${metric(t("feels"),num(c.apparent_temperature),"°C")}
-      ${metric(t("humidity"),num(c.relative_humidity_2m,0),"%")}
-      ${metric(t("clouds"),num(c.cloud_cover,0),"%")}
-      ${metric(t("rain"),num(c.precipitation),unit(w,"precipitation","mm"))}
-      ${metric(t("pressure"),num(c.pressure_msl,0),unit(w,"pressure_msl","hPa"))}
-      ${metric(t("temperature"),num(c.temperature_2m),"°C")}
-    </div>`);
-  html+=card(t("wind"),`<div class="grid">
-    ${metric(t("windSpeed"),num(c.wind_speed_10m),unit(w,"wind_speed_10m","km/h"))}
-    ${metric(t("direction"),direction(c.wind_direction_10m))}
-    </div>`,"wind");
-  html+=card(t("marine"),mc?`<div class="grid">
-    ${metric(t("waveHeight"),num(mc.wave_height),unit(m,"wave_height"))}
-    ${metric(t("wavePeriod"),num(mc.wave_period),unit(m,"wave_period"))}
-    ${metric(t("waveDirection"),direction(mc.wave_direction))}
-    ${metric(t("swell"),num(mc.swell_wave_height),unit(m,"swell_wave_height"))}
-    ${metric(t("currentSpeed"),num(mc.ocean_current_velocity,2),unit(m,"ocean_current_velocity"))}
-    ${metric(t("currentDirection"),direction(mc.ocean_current_direction))}
-    </div>`:`<div class="muted">${t("marineMissing")}</div>`,"sea");
-  if(sun?.daily){
-    const d=sun.daily;
-    html+=card(t("sun"),`<div class="grid">
-      ${metric(t("sunrise"),d.sunrise?.[0]?.slice(11,16)||"—")}
-      ${metric(t("sunset"),d.sunset?.[0]?.slice(11,16)||"—")}
-      ${metric(t("uv"),num(d.uv_index_max?.[0]))}
-      </div>`,"sun");
-  }
-  if(h?.hourly?.time?.length){
-    const a=h.hourly,units=h.hourly_units||{};
-    html+=card(t("forecast"),`
-      ${typeof Chart!=="undefined"?'<div class="chart-wrap"><canvas id="weatherChartCanvas"></canvas></div>':""}
-      <div class="table-wrap"><table><thead><tr>
-      <th>${t("hour")}</th><th>${t("temperature")} °C</th>
-      <th>${t("wind")} ${escapeHTML(units.wind_speed_10m||"km/h")}</th>
-      <th>${t("rainChance")} %</th></tr></thead><tbody>
-      ${a.time.map((time,i)=>`<tr><td dir="ltr">${escapeHTML(time.slice(5).replace("T"," "))}</td>
-      <td>${num(a.temperature_2m?.[i])}</td><td>${num(a.wind_speed_10m?.[i])}</td>
-      <td>${num(a.precipitation_probability?.[i],0)}</td></tr>`).join("")}
-      </tbody></table></div>`,"track");
-  }else html+=`<div class="notice">${t("forecastMissing")}</div>`;
-  html+=`<div class="notice">${t("disclaimer")}</div>
-    <div class="muted">${t("source")}<br>
-    ${t("time")} — ${t("air")}: <bdi>${timeText(c.time)}</bdi><br>
-    ${t("seaTime")}: <bdi>${timeText(mc?.time)}</bdi><br>
-    ${t("timezone")}: <bdi>${escapeHTML(w.timezone||"—")}</bdi></div>`;
-  $("weatherBody").innerHTML=html;
-  if(h?.hourly&&typeof Chart!=="undefined")renderChart(h);
-}
-function renderChart(data){
-  const canvas=$("weatherChartCanvas");if(!canvas)return;
-  const h=data.hourly,style=getComputedStyle(document.body);
-  const color=style.getPropertyValue("--muted").trim();
-  const grid=style.getPropertyValue("--line").trim();
-  weatherChart=new Chart(canvas,{
-    type:"line",
-    data:{
-      labels:h.time.map(v=>v.slice(11,16)),
-      datasets:[
-        {label:t("temperature")+" °C",data:h.temperature_2m,borderColor:"#d34c4c",yAxisID:"temp",tension:.25,pointRadius:0},
-        {label:t("wind")+" "+(data.hourly_units?.wind_speed_10m||"km/h"),data:h.wind_speed_10m,borderColor:"#2584c8",yAxisID:"wind",tension:.25,pointRadius:0}
-      ]
-    },
-    options:{
-      responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
-      plugins:{legend:{labels:{color,boxWidth:12,font:{size:10}}}},
-      scales:{
-        x:{ticks:{color,maxTicksLimit:6},grid:{display:false}},
-        temp:{position:"left",ticks:{color},grid:{color:grid},title:{display:true,text:"°C",color}},
-        wind:{position:"right",ticks:{color},grid:{drawOnChartArea:false},
-          title:{display:true,text:data.hourly_units?.wind_speed_10m||"km/h",color}}
-      }
+    // 2. تحديث الخريطة (عرض النقاط)
+    function saveAndRender() {
+        localStorage.setItem('fishingPoints', JSON.stringify(points));
+        renderPoints();
     }
-  });
-}
-$("btnWeather").onclick=async()=>{
-  openPanel("weatherPanel");
-  const id=++weatherRequest;
-  const lat=gpsPosition?.lat??36.77,lng=gpsPosition?.lng??10.22;
-  const isDefault=!gpsPosition;
-  weatherBusy=true;$("weatherBody").innerHTML=`<div class="loading">${t("loading")}</div>`;
-  if(weatherChart){weatherChart.destroy();weatherChart=null;}
-  try{
-    const [base,hourly,sun]=await Promise.all([
-      fetchWeatherMarine(lat,lng),fetchHourly(lat,lng).catch(()=>null),fetchSun(lat,lng).catch(()=>null)
-    ]);
-    if(id!==weatherRequest)return;
-    weatherCache={...base,hourly,sun,lat,lng,isDefault};weatherBusy=false;
-    renderWeather(weatherCache);
-  }catch{
-    if(id!==weatherRequest)return;
-    weatherBusy=false;weatherCache=null;
-    $("weatherBody").innerHTML=`<div class="loading">${t("error")}</div>`;
-  }
-};
 
-/* التصدير: النقاط والمسارات المحفوظة */
-function download(content,name,type){
-  const url=URL.createObjectURL(new Blob([content],{type}));
-  const a=document.createElement("a");a.href=url;a.download=name;
-  document.body.appendChild(a);a.click();a.remove();
-  setTimeout(()=>URL.revokeObjectURL(url),1000);toast(t("downloaded"));
-}
-$("exportJSON").onclick=()=>{
-  if(!points.length&&!tracks.length){toast(t("noData"));return;}
-  download(JSON.stringify({app:"Redline Fishing",date:new Date().toISOString(),points,tracks},null,2),
-    "redline_fishing.json","application/json");
-};
-$("exportCSV").onclick=()=>{
-  if(!points.length){toast(t("noPoints"));return;}
-  function cell(value){
-    let s=String(value??"");
-    if(/^[=+\-@\t\r]/.test(s))s="'"+s;
-    return '"'+s.replace(/"/g,'""')+'"';
-  }
-  const rows=[["name","latitude","longitude"],...points.map(p=>[p.name,p.lat,p.lng])];
-  download("\uFEFF"+rows.map(row=>row.map(cell).join(",")).join("\r\n"),
-    "redline_points.csv","text/csv;charset=utf-8");
-};
-$("exportGPX").onclick=()=>{
-  if(!points.length&&!tracks.length){toast(t("noData"));return;}
-  let xml='<?xml version="1.0" encoding="UTF-8"?>';
-  xml+='<gpx version="1.1" creator="Redline Fishing" xmlns="http://www.topografix.com/GPX/1/1">';
-  points.forEach(p=>xml+=`<wpt lat="${p.lat}" lon="${p.lng}"><name>${escapeHTML(p.name)}</name></wpt>`);
-  tracks.forEach(track=>{
-    xml+=`<trk><name>${escapeHTML(track.date)}</name><trkseg>`;
-    (track.points||[]).forEach(p=>{
-      if(Array.isArray(p)&&valid(p[0])&&valid(p[1]))xml+=`<trkpt lat="${p[0]}" lon="${p[1]}"/>`;
-    });
-    xml+="</trkseg></trk>";
-  });
-  xml+="</gpx>";
-  download(xml,"redline_fishing.gpx","application/gpx+xml");
-};
-$("clearData").onclick=()=>{
-  if(!confirm(t("confirmClear")))return;
-  points=[];tracks=[];trackOn=false;trackPoints=[];trackDist=0;
-  if(trackLine&&map){map.removeLayer(trackLine);trackLine=null;}
-  const a=store("redline_points",points),b=store("redline_tracks",tracks);
-  renderMarkers();renderPoints();updateTrackInfo();
-  if(a&&b)toast(t("deleted"));
-};
-
-/* تهيئة */
-applyLanguage();applyTheme();
-if(typeof L==="undefined"){
-  toast(t("mapError"));
-}else{
-  map=L.map("map",{zoomControl:false}).setView([36.77,10.22],13);
-  L.control.zoom({position:"bottomleft"}).addTo(map);
-  L.control.scale({position:"bottomleft",metric:true,imperial:false}).addTo(map);
-  baseLayer=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
-    maxZoom:19,attribution:"© OpenStreetMap"
-  }).addTo(map);
-  seaLayer=L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png",{
-    maxZoom:18,attribution:"© OpenSeaMap",zIndex:2
-  });
-  cluster=typeof L.markerClusterGroup==="function"
-    ?L.markerClusterGroup({chunkedLoading:true,maxClusterRadius:50,showCoverageOnHover:false})
-    :L.layerGroup();
-  cluster.addTo(map);renderMarkers();applySea();startGPS();
-
-  map.on("click",async e=>{
-    $("searchBox").hidden=true;
-    const {lat,lng}=e.latlng;
-    const popup=L.popup({maxWidth:290}).setLatLng(e.latlng)
-      .setContent(escapeHTML(t("loading"))).openOn(map);
-    try{
-      const data=await fetchWeatherMarine(lat,lng);
-      if(!map.hasLayer(popup))return;
-      const c=data.weather.current,mc=data.marine?.current;
-      popup.setContent(`<div dir="${lang==="ar"?"rtl":"ltr"}">
-        <b>${escapeHTML(weatherLabel(c.weather_code))}</b>
-        <div class="popup-row"><span>${t("temperature")}</span><b>${num(c.temperature_2m)} °C</b></div>
-        <div class="popup-row"><span>${t("windSpeed")}</span><b>${num(c.wind_speed_10m)} ${unit(data.weather,"wind_speed_10m","km/h")}</b></div>
-        <div class="popup-row"><span>${t("waveHeight")}</span><b>${num(mc?.wave_height)} ${unit(data.marine,"wave_height")}</b></div>
-        <div class="muted">${t("source")}<br>${t("disclaimer")}</div>
-      </div>`);
-    }catch{
-      if(map.hasLayer(popup))popup.setContent(escapeHTML(t("error")));
+    function renderPoints() {
+        map.eachLayer(layer => { if (layer instanceof L.Marker) map.removeLayer(layer); });
+        points.forEach(p => {
+            let marker = L.marker([p.lat, p.lon]).addTo(map);
+            // 3. تحرير النقاط (داخل الـ Popup)
+            marker.bindPopup(`
+                <b>${p.name}</b><br>
+                <button onclick="editPoint(${p.id})">تعديل</button>
+                <button onclick="deletePoint(${p.id})">حذف</button>
+                <div id="weather-${p.id}">جاري جلب الطقس...</div>
+            `).on('popupopen', () => fetchWeather(p));
+        });
     }
-  });
-}
+
+    // جلب الطقس بالساعات (API)
+    async function fetchWeather(p) {
+        try {
+            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}&hourly=temperature_2m`);
+            const data = await res.json();
+            const temp = data.hourly.temperature_2m[0] ?? "—";
+            document.getElementById(`weather-${p.id}`).innerHTML = `حرارة: ${temp}°C`;
+        } catch {
+            document.getElementById(`weather-${p.id}`).innerHTML = "تعذر جلب الطقس";
+        }
+    }
+
+    // أدوات التحرير والحذف
+    window.editPoint = (id) => {
+        let p = points.find(p => p.id === id);
+        let newName = prompt("تعديل الاسم:", p.name);
+        if (newName) { p.name = newName; saveAndRender(); }
+    };
+    window.deletePoint = (id) => {
+        points = points.filter(p => p.id !== id);
+        saveAndRender();
+    };
+
+    // 4. استيراد البيانات
+    document.getElementById('importBtn').onclick = () => document.getElementById('fileInput').click();
+    document.getElementById('fileInput').onchange = (e) => {
+        let file = e.target.files[0];
+        let reader = new FileReader();
+        reader.onload = (e) => {
+            points = JSON.parse(e.target.result);
+            saveAndRender();
+        };
+        reader.readAsText(file);
+    };
+
+    // تصدير البيانات
+    document.getElementById('exportBtn').onclick = () => {
+        let blob = new Blob([JSON.stringify(points)], {type: 'application/json'});
+        let url = URL.createObjectURL(blob);
+        let a = document.createElement('a'); a.href = url; a.download = 'points.json'; a.click();
+    };
+
+    renderPoints();
 </script>
 </body>
 </html>
