@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌊 جدول التوقعات التفصيلي</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; font-family:"Cairo",sans-serif; }
+  body { background:linear-gradient(180deg,#1a2a3a,#16303e); min-height:100vh; color:#fff; padding:15px; padding-bottom:30px; }
+  .container { max-width:720px; margin:auto; }
+  .back-link {
+    position:fixed; top:12px; left:12px; z-index:50;
+    background:rgba(255,255,255,0.12); border-radius:50%;
+    width:42px; height:42px; display:flex; align-items:center; justify-content:center;
+    color:#fff; text-decoration:none; font-size:20px;
+  }
+  .header { text-align:center; padding:14px 0 8px; font-size:20px; font-weight:700; }
+  .date-row { text-align:center; font-size:14px; color:#9fc; padding:6px 0 12px; }
+  .err { background:rgba(255,107,107,0.15); color:#ffb3b3; padding:10px; border-radius:10px; font-size:13px; display:none; margin-bottom:10px; text-align:center; }
+
+  /* الجدول الأفقي */
+  .grid { display:grid; grid-auto-flow:column; background:rgba(255,255,255,0.08); border-radius:14px; padding:10px 6px; overflow-x:auto; font-size:12px; text-align:center; }
+  .cell { padding:5px 4px; min-width:44px; }
+  .cell.hour { font-weight:700; color:#8fd3f4; }
+  .cell.active { background:rgba(143,211,244,0.25); border-radius:8px; }
+  .lbl { color:#b8ccd8; font-size:11px; font-weight:600; border-bottom:1px solid rgba(255,255,255,0.1); padding-bottom:6px; }
+  .wind1 { background:#4a7fb5; border-radius:6px; color:#fff; }
+  .wind2 { background:#2e6da4; border-radius:6px; color:#fff; }
+  .temp { color:#ffb347; font-weight:600; font-size:14px; }
+  .water { color:#7ec8e3; font-weight:600; }
+  .press { color:#f5d76e; }
+  .fish-bar { height:9px; width:80%; margin:6px auto; border-radius:5px; background:rgba(255,255,255,0.15); overflow:hidden; }
+  .fish-bar div { height:100%; border-radius:5px; }
+  .moon-row { text-align:center; padding:10px; font-size:15px; }
+</style>
+</head>
+<body>
+  <a href="index.html" class="back-link">→</a>
+  <div class="container">
+    <div class="header">🌊 التوقعات التفصيلية</div>
+    <div class="date-row" id="dateRow">📅 جارٍ التحميل...</div>
+    <div class="err" id="errBox"></div>
+    <div class="grid" id="grid"></div>
+    <div class="moon-row" id="moonRow"></div>
+  </div>
+
+<script>
+"use strict";
+
+/* ==== مؤشر الصيد (0-100) ==== */
+function fishScore(wave, wind, gust) {
+  var s = 100;
+  s -= Math.min(45, wave * 55);
+  s -= Math.min(30, wind * 1.3);
+  s -= Math.min(15, (gust - wind) * 1.2);
+  return Math.max(0, Math.round(s));
+}
+function fishColor(s) { return s >= 65 ? "#4caf50" : s >= 40 ? "#ffcc00" : "#ff6b6b"; }
+
+function showError(m) {
+  var e = document.getElementById("errBox");
+  e.textContent = m;
+  e.style.display = "block";
+}
+
+function start(lat, lon) {
+  var wUrl = "https://api.open-meteo.com/v1/forecast?latitude=" + lat.toFixed(3) +
+    "&longitude=" + lon.toFixed(3) +
+    "&hourly=temperature_2m,wind_speed_10m,wind_gusts_10m,pressure_msl" +
+    "&daily=sunrise,sunset&forecast_days=1&timezone=auto";
+  var mUrl = "https://marine-api.open-meteo.com/v1/marine?latitude=" + lat.toFixed(3) +
+    "&longitude=" + lon.toFixed(3) +
+    "&hourly=wave_height,wave_period,sea_surface_temperature&forecast_days=1&timezone=auto";
+
+  Promise.all([
+    fetch(wUrl).then(function(r){ return r.json(); }),
+    fetch(mUrl).then(function(r){ return r.json(); }).catch(function(){ return null; })
+  ]).then(function(res){ render(res[0], res[1]); })
+    .catch(function(e){ showError("تعذّر جلب البيانات: " + e.message); });
+}
+
+function render(w, m) {
+  var today = new Date().toISOString().slice(0, 10);
+  document.getElementById("dateRow").textContent =
+    "📅 " + today + "  🌅 " + w.daily.sunrise[0].slice(11,16) + " 🌇 " + w.daily.sunset[0].slice(11,16);
+
+  var wh = w.hourly, mh = m ? m.hourly : null;
+  var startIdx = -1;
+  var nowKey = new Date().toISOString().slice(0,13);
+  for (var i = 0; i < wh.time.length; i++) {
+    if (wh.time[i].slice(0,13) === nowKey) { startIdx = i; break; }
+  }
+  if (startIdx === -1) startIdx = 0;
+  var N = Math.min(10, wh.time.length - startIdx);
+
+  var hours = [], icons = [], w1 = [], w2 = [], press = [], temp = [],
+      fish = [], water = [], waves = [], secs = [];
+
+  for (var j = 0; j < N; j++) {
+    var k = startIdx + j;
+    hours.push(wh.time[k].slice(11,16));
+    var h = parseInt(wh.time[k].slice(11,13),10);
+    icons.push(h >= 6 && h < 19 ? "☀️" : "🌙");
+    w1.push(Math.round(wh.wind_speed_10m[k]));
+    w2.push(Math.round(wh.wind_gusts_10m[k]));
+    press.push(Math.round(wh.pressure_msl[k]));
+    temp.push(Math.round(wh.temperature_2m[k]));
+    var sc = fishScore(mh ? mh.wave_height[k] : 0, wh.wind_speed_10m[k], wh.wind_gusts_10m[k]);
+    fish.push(sc);
+    water.push(mh && mh.sea_surface_temperature ? Math.round(mh.sea_surface_temperature[k]) + "°" : "—");
+    waves.push(mh ? mh.wave_height[k].toFixed(2) : "—");
+    secs.push(mh && mh.wave_period ? mh.wave_period[k] : "—");
+  }
+
+  function buildRow(label, values, cls, isBar) {
+    var html = '<div class="lbl">' + label + '</div>';
+    for (var i2 = 0; i2 < N; i2++) {
+      var v = values[i2];
+      var extra = i2 === 0 ? " active" : "";
+      if (isBar) {
+        html += '<div class="cell"><div class="fish-bar"><div style="width:' + v + '%;background:' + fishColor(v) + '"></div></div></div>';
+      } else {
+        html += '<div class="cell ' + cls + extra + '">' + v + '</div>';
+      }
+    }
+    document.getElementById("grid").innerHTML += html;
+  }
+
+  document.getElementById("grid").innerHTML = "";
+  buildRow("الساعة", hours, "cell hour");
+  buildRow("الطقس", icons, "");
+  buildRow("سرعة km/h", w1, "wind1");
+  buildRow("هبّات km/h", w2, "wind2");
+  buildRow("الضغط hPa", press, "press");
+  buildRow("°C", temp, "temp");
+  buildRow("🐟 مؤشر الصيد", fish, "", true);
+  buildRow("ماء °C", water, "water");
+  buildRow("موج م", waves, "");
+  buildRow("فترة s", secs, "");
+
+  document.getElementById("moonRow").innerHTML =
+    "🌙 بيانات بحرية: " + (mh ? "متوفرة ✅" : "غير متوفرة في موقعك (داخل اليابسة)") +
+    " · المصدر: Open-Meteo";
+}
+
+function init() {
+  if (!navigator.geolocation) { start(36.80, 10.18); return; }
+  navigator.geolocation.getCurrentPosition(
+    function(p){ start(p.coords.latitude, p.coords.longitude); },
+    function(){ start(36.80, 10.18); },
+    { enableHighAccuracy:true, timeout:10000 }
+  );
+}
+init();
+</script>
+</body>
+</html>
