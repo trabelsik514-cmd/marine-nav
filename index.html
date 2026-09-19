@@ -2,664 +2,815 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#d32f2f">
-<title>Redline Fishing 🔴</title>
-<link rel="manifest" href="data:application/json,{}" id="manifestLink">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f4f7fb">
+<title>Redline Fishing</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
 <style>
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;background:#1a1a2e;height:100vh;overflow:hidden}
-
-/*=== شاشة البداية ===*/
-#splash{position:fixed;inset:0;background:linear-gradient(160deg,#0d1b2a,#1b263b,#d32f2f);z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
-#splash h1{color:#fff;font-size:34px;letter-spacing:2px;text-shadow:0 3px 10px rgba(0,0,0,.5)}
-#splash h1 span{color:#ff5252}
-#splash .kayak{font-size:80px;animation:float 2.5s ease-in-out infinite}
-#splash .line{width:60%;height:3px;background:linear-gradient(90deg,transparent,#ff5252,transparent)}
-#splash p{color:#aebacf;font-size:14px}
-@keyframes float{0%,100%{transform:translateY(0)rotate(-3deg)}50%{transform:translateY(-15px)rotate(3deg)}}
-
-/*=== الهيدر ===*/
-#header{position:fixed;top:0;left:0;right:0;height:56px;background:linear-gradient(90deg,#b71c1c,#d32f2f);display:flex;align-items:center;justify-content:space-between;padding:0 10px;z-index:1000;box-shadow:0 2px 8px rgba(0,0,0,.4)}
-#header .title{color:#fff;font-weight:bold;font-size:16px;white-space:nowrap}
-#header .title span{color:#ffcdd2}
-#coords{color:#fff;font-size:11px;font-family:monospace;direction:ltr;text-align:left;flex-shrink:0}
-#coords small{display:block;color:#ffcdd2;font-size:9px}
-
-/*=== البحث ===*/
-#searchBox{position:fixed;top:56px;left:0;right:0;z-index:999;background:rgba(13,17,30,.95);backdrop-filter:blur(8px);padding:8px 12px;display:none;border-bottom:2px solid #d32f2f}
-#searchBox.show{display:flex;gap:8px}
-#searchInput{flex:1;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:10px 14px;color:#fff;font-size:14px;outline:none}
-#searchInput::placeholder{color:#8892b0}
-#searchInput:focus{border-color:#d32f2f}
-#searchBtn{background:#d32f2f;border:none;color:#fff;border-radius:10px;padding:10px 16px;font-size:14px;cursor:pointer}
-#searchResults{position:fixed;top:105px;left:12px;right:12px;max-height:220px;overflow-y:auto;background:rgba(13,17,30,.97);border-radius:12px;border:1px solid #d32f2f;z-index:998;display:none}
-#searchResults.show{display:block}
-.searchResultItem{padding:10px 14px;color:#fff;border-bottom:1px solid rgba(255,255,255,.06);cursor:pointer;font-size:13px}
-.searchResultItem:hover{background:rgba(211,47,47,.15)}
-.searchResultItem .sr-title{font-weight:bold}
-.searchResultItem .sr-desc{color:#8892b0;font-size:11px}
-
-/*=== الخريطة ===*/
-#map{position:absolute;top:56px;bottom:0;left:0;right:0;z-index:1}
-
-/*=== شريط الأزرار ===*/
-#toolbar{position:fixed;bottom:12px;left:10px;right:10px;display:flex;gap:6px;overflow-x:auto;padding:8px 4px;z-index:1000;scrollbar-width:none}
-#toolbar::-webkit-scrollbar{display:none}
-.btn{flex-shrink:0;background:rgba(20,20,35,.92);backdrop-filter:blur(8px);border:1px solid #d32f2f;color:#fff;border-radius:14px;padding:8px 12px;font-size:11px;font-weight:bold;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:60px;cursor:pointer;transition:transform .15s}
-.btn:active{transform:scale(.92)}
-.btn .ico{font-size:18px}
-.btn.active{background:#d32f2f;box-shadow:0 0 12px rgba(255,60,60,.6)}
-.btn.call{background:#25D366;border-color:#25D366}
-.btn.purple{background:#7B1FA2;border-color:#7B1FA2}
-.btn.orange{background:#E65100;border-color:#E65100}
-.btn.teal{background:#00695C;border-color:#00695C}
-
-/*=== الإشعارات ===*/
-#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%)translateY(-20px);background:#d32f2f;color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;z-index:99999;opacity:0;transition:all .3s;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,.4)}
-#toast.show{opacity:1;transform:translateX(-50%)translateY(0)}
-
-/*=== المسار ===*/
-#trackInfo{position:fixed;top:66px;right:10px;background:rgba(20,20,35,.95);color:#fff;padding:8px 12px;border-radius:10px;font-size:12px;z-index:9999;display:none;border:1px solid #d32f2f;direction:ltr;backdrop-filter:blur(8px)}
-
-/*=== لوحة الطقس ===*/
-#weatherPanel{position:fixed;bottom:0;left:0;right:0;background:rgba(13,17,30,.96);backdrop-filter:blur(16px);border-radius:22px 22px 0 0;z-index:9998;padding:0;max-height:75vh;overflow-y:auto;transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1);border-top:3px solid #d32f2f;direction:rtl}
-#weatherPanel.show{transform:translateY(0)}
-#weatherPanel .wp-header{display:flex;align-items:center;justify-content:space-between;padding:16px 18px 12px;border-bottom:1px solid rgba(255,255,255,.08);position:sticky;top:0;background:rgba(13,17,30,.98);z-index:2}
-#weatherPanel .wp-header h3{color:#fff;font-size:16px;display:flex;align-items:center;gap:8px}
-#weatherPanel .wp-close{background:none;border:none;color:#aaa;font-size:22px;cursor:pointer;padding:4px 10px;border-radius:10px}
-#weatherPanel .wp-body{padding:14px 18px 24px}
-.wp-loading{text-align:center;padding:30px 0;color:#aebacf;font-size:14px}
-.wp-loading .spin{display:inline-block;animation:spin 1s linear infinite;font-size:28px}
-@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-.wp-cards{display:flex;flex-direction:column;gap:10px}
-.wp-card{background:rgba(255,255,255,.04);border-radius:14px;padding:14px}
-.wp-card-title{color:#ffcdd2;font-size:12px;font-weight:bold;margin-bottom:10px;display:flex;align-items:center;gap:6px}
-.wp-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.wp-item{text-align:center}
-.wp-item .val{color:#fff;font-size:20px;font-weight:bold}
-.wp-item .val small{font-size:13px;color:#aebacf;font-weight:normal}
-.wp-item .lbl{color:#8892b0;font-size:11px;margin-top:2px}
-.wp-item .emoji{font-size:28px;margin-bottom:4px}
-.wind-arrow{display:inline-block;font-size:24px;transition:transform .3s}
-.wp-bad{color:#ff5252;background:rgba(255,82,82,.12);border-radius:12px;padding:8px 12px;margin-top:8px;font-size:13px;text-align:center}
-.wp-good{color:#69f0ae;background:rgba(105,240,174,.1);border-radius:12px;padding:8px 12px;margin-top:8px;font-size:13px;text-align:center}
-.wp-source{text-align:center;color:#5a6480;font-size:10px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.05)}
-#chartContainer{width:100%;height:180px;margin-top:8px;position:relative}
-#chartContainer canvas{width:100% !important;height:100% !important}
-
-/*=== ستايل Popup ===*/
-.map-weather-popup .leaflet-popup-content-wrapper{background:rgba(13,17,30,.96);backdrop-filter:blur(12px);color:#fff;border-radius:16px;border:1px solid #d32f2f;box-shadow:0 8px 32px rgba(0,0,0,.6);direction:rtl;padding:0}
-.map-weather-popup .leaflet-popup-content{margin:14px;min-width:210px}
-.map-weather-popup .leaflet-popup-tip{background:#1a1a2e;border:1px solid #d32f2f}
-.map-weather-popup .popup-title{font-size:14px;font-weight:bold;color:#ff5252;margin-bottom:10px;text-align:center;border-bottom:1px solid rgba(255,255,255,.08);padding-bottom:8px}
-.map-weather-popup .popup-row{display:flex;justify-content:space-between;padding:4px 0;font-size:13px;border-bottom:1px solid rgba(255,255,255,.04)}
-.map-weather-popup .popup-row:last-child{border:none}
-.map-weather-popup .popup-label{color:#8892b0}
-.map-weather-popup .popup-value{color:#fff;font-weight:bold}
-.map-weather-popup .popup-bad{color:#ff5252}
-.map-weather-popup .popup-good{color:#69f0ae}
-.map-weather-popup .popup-loading{text-align:center;padding:20px 0;color:#aebacf;font-size:13px}
-
-/*=== الإنجازات ===*/
-#achievePanel{position:fixed;bottom:0;left:0;right:0;background:rgba(13,17,30,.96);backdrop-filter:blur(16px);border-radius:22px 22px 0 0;z-index:9998;padding:0;max-height:70vh;overflow-y:auto;transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1);border-top:3px solid #FFD700;direction:rtl}
-#achievePanel.show{transform:translateY(0)}
-.achieve-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px}
-.achieve-card{background:rgba(255,255,255,.04);border-radius:14px;padding:14px;text-align:center}
-.achieve-card.unlocked{background:rgba(255,215,0,.1);border:1px solid #FFD700}
-.achieve-card .ach-ico{font-size:32px}
-.achieve-card .ach-name{color:#fff;font-size:13px;font-weight:bold;margin:6px 0 2px}
-.achieve-card .ach-desc{color:#8892b0;font-size:10px}
-.achieve-card .ach-status{font-size:11px;margin-top:6px}
-.achieve-card.locked .ach-ico{filter:grayscale(1);opacity:.4}
-
-/*=== تصدير ===*/
-#exportPanel{position:fixed;bottom:0;left:0;right:0;background:rgba(13,17,30,.96);backdrop-filter:blur(16px);border-radius:22px 22px 0 0;z-index:9998;padding:0;max-height:60vh;overflow-y:auto;transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1);border-top:3px solid #25D366;direction:rtl}
-#exportPanel.show{transform:translateY(0)}
-.export-options{padding:14px;display:flex;flex-direction:column;gap:10px}
-.export-btn{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:12px;padding:14px;color:#fff;font-size:14px;display:flex;align-items:center;gap:12px;cursor:pointer}
-.export-btn:active{transform:scale(.97)}
-.export-btn .ex-ico{font-size:24px}
-.export-btn .ex-info{flex:1}
-.export-btn .ex-info small{display:block;color:#8892b0;font-size:11px}
-
-/*=== الأسماك ===*/
-#fishPanel{position:fixed;bottom:0;left:0;right:0;background:rgba(13,17,30,.96);backdrop-filter:blur(16px);border-radius:22px 22px 0 0;z-index:9998;padding:0;max-height:65vh;overflow-y:auto;transform:translateY(100%);transition:transform .35s cubic-bezier(.32,.72,0,1);border-top:3px solid #00BCD4;direction:rtl}
-#fishPanel.show{transform:translateY(0)}
-.fish-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:14px}
-.fish-card{background:rgba(255,255,255,.04);border-radius:12px;padding:12px;text-align:center}
-.fish-card .fish-ico{font-size:28px}
-.fish-card .fish-name{color:#fff;font-size:13px;font-weight:bold;margin:4px 0}
-.fish-card .fish-info{color:#8892b0;font-size:10px;line-height:1.5}
-
-/*=== عناصر تحكم ===*/
-#extraControls{position:fixed;top:66px;left:10px;display:flex;flex-direction:column;gap:6px;z-index:900}
-.ctrl-btn{width:40px;height:40px;background:rgba(20,20,35,.9);backdrop-filter:blur(8px);border:1px solid #d32f2f;border-radius:10px;color:#fff;font-size:18px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-.ctrl-btn:active{transform:scale(.9)}
-.ctrl-btn.active{background:#d32f2f}
-.leaflet-control-scale{direction:ltr !important}
-.leaflet-control-scale-line{background:rgba(20,20,35,.85)!important;color:#fff!important;border:1px solid #d32f2f!important;font-size:10px!important;padding:2px 6px!important}
-body.night-mode #map{filter:brightness(.7)saturate(.6)hue-rotate(10deg)}
-.moon-phase{text-align:center;padding:10px 0}
-.moon-phase .moon-ico{font-size:48px}
-.moon-phase .moon-name{color:#fff;font-size:16px;font-weight:bold;margin:4px 0}
-.moon-phase .moon-detail{color:#8892b0;font-size:11px}
-.tide-bar{display:flex;align-items:center;gap:10px;margin-top:8px}
-.tide-bar .tide-level{flex:1;height:8px;background:rgba(255,255,255,.1);border-radius:4px;overflow:hidden}
-.tide-bar .tide-fill{height:100%;border-radius:4px;transition:width .5s;background:linear-gradient(90deg,#1565C0,#42A5F5)}
-.tide-times{display:flex;justify-content:space-between;margin-top:6px}
-.tide-time{text-align:center;font-size:11px;color:#8892b0}
-.tide-time .tt-val{color:#fff;font-weight:bold}
-#achieveToast{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%)scale(0);background:rgba(13,17,30,.96);backdrop-filter:blur(16px);border:2px solid #FFD700;border-radius:20px;padding:24px 32px;z-index:99999;text-align:center;transition:transform .4s cubic-bezier(.34,1.56,.64,1)}
-#achieveToast.show{transform:translate(-50%,-50%)scale(1)}
-#achieveToast .at-ico{font-size:48px}
-#achieveToast .at-title{color:#FFD700;font-size:18px;font-weight:bold;margin:8px 0 4px}
-#achieveToast .at-desc{color:#fff;font-size:14px}
+*{box-sizing:border-box}
+:root{
+  color-scheme:light;
+  --bg:#f4f7fb;--card:#fff;--soft:#eef4fa;--text:#193149;
+  --muted:#5a7086;--line:#dae4ee;--accent:#176eae;
+  --shadow:0 8px 30px #18345120;
+}
+body.dark{
+  color-scheme:dark;
+  --bg:#111c29;--card:#192a3b;--soft:#22364b;
+  --text:#edf5ff;--muted:#b3c5d8;--line:#37506a;--accent:#89c8ff;
+}
+body{margin:0;font-family:Tahoma,Arial,sans-serif;background:var(--bg);color:var(--text)}
+button,input{font:inherit}
+button{cursor:pointer;touch-action:manipulation}
+button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+button:disabled{opacity:.55;cursor:wait}
+svg.ico{width:22px;height:22px;flex-shrink:0;vertical-align:middle}
+header{
+  position:fixed;inset:0 0 auto;height:70px;z-index:1000;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:10px 14px;background:var(--card);border-bottom:1px solid var(--line);
+}
+.brand{font-size:16px;font-weight:bold;direction:ltr;white-space:nowrap}
+.brand span{color:#d32f2f}
+#coords{font-size:10px;color:var(--muted);direction:ltr;margin-top:5px}
+.header-actions{display:flex;gap:7px}
+.icon-btn,.language{
+  border:1px solid var(--line);background:var(--card);color:var(--text);
+  min-height:42px;border-radius:12px;padding:9px;display:flex;align-items:center;justify-content:center;
+}
+.language{min-width:48px;font-weight:bold;color:var(--accent)}
+#map{position:fixed;inset:70px 0 0;background:#dae8ee;z-index:1}
+body.dark .leaflet-tile-pane{filter:brightness(.65) saturate(.65)}
+#mapControls{position:fixed;top:84px;left:12px;z-index:900;display:grid;gap:8px}
+#mapControls button{box-shadow:var(--shadow);width:44px;height:44px}
+#toolbar{
+  position:fixed;bottom:calc(12px + env(safe-area-inset-bottom,0px));
+  left:12px;right:12px;z-index:1000;display:flex;gap:5px;
+  padding:8px;background:var(--card);border:1px solid var(--line);
+  border-radius:20px;box-shadow:var(--shadow);overflow-x:auto;scrollbar-width:thin;
+}
+.tool{
+  flex:1 0 68px;min-height:62px;border:0;border-radius:12px;padding:8px 6px;
+  background:transparent;color:var(--muted);display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:7px;font-size:11px;
+}
+.tool.active,.tool:hover{background:var(--soft);color:var(--accent)}
+#searchBox{
+  position:fixed;top:80px;left:66px;right:12px;z-index:1100;
+  background:var(--card);padding:10px;border:1px solid var(--line);
+  border-radius:15px;box-shadow:var(--shadow);
+}
+.search-row{display:flex;gap:6px}
+input{min-width:0;flex:1;width:100%;padding:11px;background:var(--soft);
+  border:1px solid var(--line);border-radius:10px;color:var(--text)}
+.primary{border:0;border-radius:10px;background:#176eae;color:white;padding:10px 14px}
+#searchResults{max-height:240px;overflow:auto}
+.result{display:block;width:100%;text-align:start;padding:12px;background:transparent;
+  color:var(--text);border:0;border-bottom:1px solid var(--line);line-height:1.6}
+.result:hover{background:var(--soft)}
+#trackInfo{
+  position:fixed;top:84px;right:12px;z-index:900;padding:11px;
+  background:var(--card);border:1px solid var(--line);border-radius:12px;
+  box-shadow:var(--shadow);font-size:12px;line-height:1.8;
+}
+[hidden]{display:none!important}
+.panel{
+  position:fixed;bottom:0;left:0;right:0;z-index:2000;max-height:82vh;
+  max-height:82dvh;overflow:auto;overscroll-behavior:contain;
+  background:var(--bg);border:1px solid var(--line);border-radius:23px 23px 0 0;
+  box-shadow:0 -8px 40px #18345130;padding-bottom:env(safe-area-inset-bottom,0px);
+}
+.panel-head{position:sticky;top:0;z-index:2;background:var(--card);padding:12px 16px;
+  display:flex;justify-content:space-between;align-items:center;gap:10px;border-bottom:1px solid var(--line)}
+.panel-head h2{margin:0;font-size:16px}
+.panel-body{padding:15px;display:grid;gap:13px}
+.card{padding:16px;background:var(--card);border:1px solid var(--line);border-radius:17px;min-width:0}
+.card h3{font-size:13px;color:var(--accent);margin:0 0 13px;display:flex;gap:8px;align-items:center}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.metric{text-align:center;background:var(--soft);padding:14px 8px;border-radius:12px;min-width:0}
+.value{font-size:25px;font-weight:bold;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.value small{font-size:12px;font-weight:normal;color:var(--muted);margin-inline-start:4px}
+.label{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5}
+.hero{display:flex;justify-content:space-between;align-items:center;gap:15px}
+.hero .temperature{font-size:43px;font-weight:bold;direction:ltr}
+.hero .ico{width:43px;height:43px;color:var(--accent)}
+.muted{color:var(--muted);font-size:12px;line-height:1.8}
+.notice{padding:12px;border-radius:12px;background:var(--soft);color:var(--muted);font-size:12px;line-height:1.8}
+.loading{text-align:center;padding:30px;color:var(--muted)}
+.chart-wrap{height:230px;position:relative}
+.table-wrap{overflow:auto;max-height:320px}
+table{border-collapse:collapse;width:100%;font-size:12px;white-space:nowrap}
+th,td{text-align:center;padding:11px 9px;border-bottom:1px solid var(--line)}
+th{background:var(--soft);color:var(--muted);position:sticky;top:0}
+.action{
+  width:100%;display:flex;align-items:center;gap:12px;text-align:start;
+  border:1px solid var(--line);background:var(--card);color:var(--text);
+  padding:15px;border-radius:13px;
+}
+.action small{display:block;color:var(--muted);font-size:11px;margin-top:5px}
+.danger{color:#c43a35;border-color:#c43a3550}
+.point-row{display:flex;align-items:center;gap:9px}
+.point-row .action{flex:1}
+#toast{
+  position:fixed;top:82px;left:50%;transform:translateX(-50%);z-index:5000;
+  max-width:calc(100vw - 30px);width:max-content;background:var(--text);color:var(--card);
+  padding:12px 18px;border-radius:15px;box-shadow:var(--shadow);text-align:center;font-size:13px;
+}
+.leaflet-bottom.leaflet-left{bottom:115px}
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--card);color:var(--text)}
+.leaflet-popup-content{min-width:190px;line-height:1.7}
+.popup-row{display:flex;justify-content:space-between;gap:20px;border-bottom:1px solid var(--line);padding:6px 0}
+.popup-row span{color:var(--muted)}
+@media(min-width:760px){
+  #toolbar{max-width:920px;margin:auto}
+  .panel{left:auto;right:18px;bottom:110px;width:460px;
+    max-height:calc(100vh - 195px);border-radius:22px}
+  #searchBox{right:auto;width:390px}
+}
+@media(max-width:370px){.brand{font-size:13px}header{padding:8px}.header-actions{gap:4px}}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
-
-<div id="splash">
-  <div class="kayak">🛶</div>
-  <h1>Redline <span>Fishing</span></h1>
-  <div class="line"></div>
-  <p>🎖️ دليل الصيد بالكاياك</p>
-</div>
-
-<div id="header">
-  <div class="title">Redline <span>Fishing</span> 🔴</div>
-  <div id="coords">--.-----, --.-----<small>🧭 <span id="heading">--</span>°</small></div>
-</div>
-
-<div id="searchBox">
-  <input type="text" id="searchInput" placeholder="🔍 ابحث عن موقع (مدينة، شاطئ، ميناء...)">
-  <button id="searchBtn">بحث</button>
-</div>
-<div id="searchResults"></div>
-<div id="trackInfo"></div>
-
-<div id="extraControls">
-  <div class="ctrl-btn" id="btnNight">🌙</div>
-  <div class="ctrl-btn" id="btnFullscreen">⛶</div>
-  <div class="ctrl-btn" id="btnSearch">🔍</div>
-</div>
+<header>
+  <div>
+    <div class="brand">Redline <span>Fishing</span></div>
+    <div id="coords">—</div>
+  </div>
+  <div class="header-actions">
+    <button id="btnLanguage" class="language">FR</button>
+    <button id="btnNight" class="icon-btn" data-icon="moon" data-title="night"></button>
+  </div>
+</header>
 
 <div id="map"></div>
 
-<div id="toolbar">
-  <div class="btn" id="btnLocate"><span class="ico">🎯</span>موقعي</div>
-  <div class="btn" id="btnWeather"><span class="ico">🌤️</span>الطقس</div>
-  <div class="btn" id="btnSea"><span class="ico">🌊</span>البحر</div>
-  <div class="btn" id="btnDepth"><span class="ico">📊</span>أعماق</div>
-  <div class="btn" id="btnTrack"><span class="ico">🗺️</span>مسار</div>
-  <div class="btn" id="btnSave"><span class="ico">💾</span>حفظ</div>
-  <div class="btn" id="btnPoints"><span class="ico">📋</span>نقاطي</div>
-  <div class="btn orange" id="btnExport"><span class="ico">📤</span>تصدير</div>
-  <div class="btn purple" id="btnAchieve"><span class="ico">🏆</span>إنجازات</div>
-  <div class="btn teal" id="btnFish"><span class="ico">🐟</span>أسماك</div>
-  <div class="btn call" id="btnCall"><span class="ico">📞</span>المجموعة</div>
-  <div class="btn call" id="btnShare"><span class="ico">📤</span>موقعي</div>
+<div id="mapControls">
+  <button id="btnSearch" class="icon-btn" data-icon="search" data-title="search"></button>
+  <button id="btnFullscreen" class="icon-btn" data-icon="fullscreen" data-title="fullscreen"></button>
 </div>
 
-<div id="weatherPanel">
-  <div class="wp-header">
-    <h3>🌤️ الطقس والأحوال البحرية</h3>
-    <button class="wp-close" id="closeWeather">✕</button>
+<div id="searchBox" hidden>
+  <div class="search-row">
+    <input id="searchInput" type="search" data-placeholder="searchPlaceholder">
+    <button id="searchBtn" class="primary" data-i18n="search"></button>
   </div>
-  <div class="wp-body" id="weatherBody">
-    <div class="wp-loading"><div class="spin">🔄</div><p style="margin-top:10px;">جاري تحميل بيانات NOAA...</p></div>
-  </div>
+  <div id="searchResults"></div>
 </div>
 
-<div id="achievePanel">
-  <div class="wp-header" style="border-color:rgba(255,215,0,.2);">
-    <h3>🏆 الإنجازات</h3>
-    <button class="wp-close" id="closeAchieve">✕</button>
-  </div>
-  <div class="achieve-grid" id="achieveGrid"></div>
-</div>
+<div id="trackInfo" hidden></div>
 
-<div id="exportPanel">
-  <div class="wp-header" style="border-color:rgba(37,211,102,.2);">
-    <h3>📤 تصدير البيانات</h3>
-    <button class="wp-close" id="closeExport">✕</button>
-  </div>
-  <div class="export-options">
-    <div class="export-btn" id="exportJSON"><span class="ex-ico">📄</span><div class="ex-info">تصدير JSON<span>النقاط + المسارات</span></div><span style="color:#8892b0;">⬇️</span></div>
-    <div class="export-btn" id="exportCSV"><span class="ex-ico">📊</span><div class="ex-info">تصدير CSV<span>النقاط فقط (Excel)</span></div><span style="color:#8892b0;">⬇️</span></div>
-    <div class="export-btn" id="exportGPX"><span class="ex-ico">📍</span><div class="ex-info">تصدير GPX<span>للاستخدام مع تطبيقات GPS</span></div><span style="color:#8892b0;">⬇️</span></div>
-    <div class="export-btn" id="clearData" style="border-color:#d32f2f;"><span class="ex-ico">🗑️</span><div class="ex-info" style="color:#ff5252;">مسح جميع البيانات<span>لا يمكن التراجع</span></div><span style="color:#ff5252;">⚠️</span></div>
-  </div>
-</div>
+<nav id="toolbar">
+  <button id="btnLocate" class="tool" data-icon="locate" data-label="locate"></button>
+  <button id="btnWeather" class="tool" data-icon="weather" data-label="weather"></button>
+  <button id="btnSea" class="tool" data-icon="sea" data-label="sea"></button>
+  <button id="btnTrack" class="tool" data-icon="track" data-label="track"></button>
+  <button id="btnSave" class="tool" data-icon="save" data-label="save"></button>
+  <button id="btnPoints" class="tool" data-icon="points" data-label="points"></button>
+  <button id="btnExport" class="tool" data-icon="export" data-label="export"></button>
+  <button id="btnCall" class="tool" data-icon="group" data-label="group"></button>
+  <button id="btnShare" class="tool" data-icon="share" data-label="share"></button>
+</nav>
 
-<div id="fishPanel">
-  <div class="wp-header" style="border-color:rgba(0,188,212,.2);">
-    <h3>🐟 أنواع الأسماك الموسمية</h3>
-    <button class="wp-close" id="closeFish">✕</button>
+<section id="weatherPanel" class="panel" hidden aria-labelledby="weatherTitle">
+  <div class="panel-head">
+    <h2 id="weatherTitle" data-i18n="weatherTitle"></h2>
+    <button class="icon-btn" data-close="weatherPanel" data-icon="close" data-title="close"></button>
   </div>
-  <div class="fish-grid" id="fishGrid"></div>
-</div>
+  <div id="weatherBody" class="panel-body"></div>
+</section>
 
-<div id="achieveToast">
-  <div class="at-ico">🏆</div>
-  <div class="at-title">إنجاز جديد!</div>
-  <div class="at-desc" id="achieveToastDesc"></div>
-</div>
+<section id="pointsPanel" class="panel" hidden aria-labelledby="pointsTitle">
+  <div class="panel-head">
+    <h2 id="pointsTitle" data-i18n="points"></h2>
+    <button class="icon-btn" data-close="pointsPanel" data-icon="close" data-title="close"></button>
+  </div>
+  <div id="pointsBody" class="panel-body"></div>
+</section>
 
-<div id="toast"></div>
+<section id="exportPanel" class="panel" hidden aria-labelledby="exportTitle">
+  <div class="panel-head">
+    <h2 id="exportTitle" data-i18n="exportTitle"></h2>
+    <button class="icon-btn" data-close="exportPanel" data-icon="close" data-title="close"></button>
+  </div>
+  <div class="panel-body">
+    <button id="exportJSON" class="action">
+      <span data-icon="export"></span><span>JSON<small data-i18n="allData"></small></span>
+    </button>
+    <button id="exportCSV" class="action">
+      <span data-icon="points"></span><span>CSV<small data-i18n="pointsOnly"></small></span>
+    </button>
+    <button id="exportGPX" class="action">
+      <span data-icon="track"></span><span>GPX<small data-i18n="allData"></small></span>
+    </button>
+    <button id="clearData" class="action danger">
+      <span data-icon="trash"></span><span data-i18n="clearData"></span>
+    </button>
+  </div>
+</section>
+
+<div id="toast" role="status" hidden></div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
 <script>
-/* ===== الإعدادات ===== */
+"use strict";
+
+/* إعدادات: ضع رابط مجموعتك هنا */
 const WHATSAPP_GROUP_URL = "https://chat.whatsapp.com/XXXXXXXXXXXXXXX";
 
-/* ===== بيانات الأسماك ===== */
-const fishData = [
-  {name:"تونة حمراء",ico:"🐟",season:"مايو - سبتمبر",depth:"20-50م",bait:"سردين, حبار",desc:"هجرات صيفية"},
-  {name:"دورادو",ico:"🐠",season:"يونيو - أكتوبر",depth:"10-30م",bait:"حبار, جمبري",desc:"قرب السطح"},
-  {name:"بوري",ico:"🐟",season:"سبتمبر - ديسمبر",depth:"5-15م",bait:"دود, عجين",desc:"قرب الشاطئ"},
-  {name:"شورو",ico:"🐋",season:"أغسطس - نوفمبر",depth:"15-40م",bait:"سردين, حبار",desc:"مياه مفتوحة"},
-  {name:"سباري",ico:"🐡",season:"أكتوبر - مارس",depth:"10-25م",bait:"دود, محار",desc:"قاع صخري"},
-  {name:"لوت",ico:"🐟",season:"يونيو - سبتمبر",depth:"30-80م",bait:"سردين, قطع حبار",desc:"مياه عميقة"},
-  {name:"سلطان إبراهيم",ico:"🐠",season:"أبريل - نوفمبر",depth:"5-20م",bait:"دود, جمبري صغير",desc:"قاع رملي"},
-  {name:"مرجان",ico:"🐡",season:"طوال السنة",depth:"20-100م",bait:"سردين, حبار",desc:"مياه عميقة"},
-  {name:"وقار",ico:"🐟",season:"مايو - أكتوبر",depth:"15-50م",bait:"جمبري, سرطان",desc:"قاع صخري"},
-  {name:"سكمبري",ico:"🐟",season:"أبريل - يوليو",depth:"10-30م",bait:"قطع سردين",desc:"مياه مفتوحة"},
-  {name:"غار",ico:"🐡",season:"طوال السنة",depth:"30-120م",bait:"سردين, حبار",desc:"قاع عميق"},
-  {name:"كاجوال",ico:"🐟",season:"سبتمبر - ديسمبر",depth:"5-15م",bait:"عجين, دود",desc:"قرب الشاطئ"}
-];
+const $ = id => document.getElementById(id);
+function read(key,fallback){
+  try{return JSON.parse(localStorage.getItem(key)) ?? fallback;}
+  catch{return fallback;}
+}
+function store(key,value){
+  try{localStorage.setItem(key,JSON.stringify(value));return true;}
+  catch{toast(t("storageError"));return false;}
+}
+const escapeHTML = value => String(value ?? "").replace(/[&<>"']/g,
+  c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
-/* ===== الإنجازات ===== */
-const ACH_KEY = 'redline_achievements';
-const defaultAchievements = [
-  {id:'firstPoint',name:'🏅 أول نقطة',desc:'احفظ أول نقطة صيد',icon:'📍',check:s=>s.points>=1},
-  {id:'fivePoints',name:'⭐ 5 نقاط',desc:'احفظ 5 نقاط صيد',icon:'⭐',check:s=>s.points>=5},
-  {id:'tenPoints',name:'🎖️ 10 نقاط',desc:'احفظ 10 نقاط صيد',icon:'🎖️',check:s=>s.points>=10},
-  {id:'firstTrack',name:'🗺️ أول مسار',desc:'سجل أول مسار',icon:'🗺️',check:s=>s.tracks>=1},
-  {id:'track5km',name:'🥇 5 كم',desc:'قطع مسافة 5 كم',icon:'🥇',check:s=>s.dist>=5},
-  {id:'track10km',name:'🏆 10 كم',desc:'قطع مسافة 10 كم',icon:'🏆',check:s=>s.dist>=10},
-  {id:'track25km',name:'👑 25 كم',desc:'قطع مسافة 25 كم',icon:'👑',check:s=>s.dist>=25},
-  {id:'weatherCheck',name:'🌤️ متابع الطقس',desc:'افتح الطقس 10 مرات',icon:'🌤️',check:s=>s.weather>=10},
-  {id:'explorer',name:'🌍 مستكشف',desc:'ابحث عن 5 مواقع',icon:'🌍',check:s=>s.searches>=5},
-  {id:'sharer',name:'📤 مشارك',desc:'شارك موقعك 3 مرات',icon:'📤',check:s=>s.shares>=3},
-  {id:'nightOwl',name:'🦉 ليلي',desc:'فعّل الوضع الليلي',icon:'🌙',check:s=>s.night>=1},
-  {id:'veteran',name:'🎣 محترف',desc:'اجمع 10 إنجازات',icon:'🎣',check:s=>s.total>=10}
-];
+let lang=read("redline_language","ar");
+if(!["ar","fr"].includes(lang))lang="ar";
+let dark=read("redline_dark",false);
 
-function loadAch(){
-  const r=localStorage.getItem(ACH_KEY);
-  return r?JSON.parse(r):{points:0,tracks:0,dist:0,weather:0,searches:0,shares:0,night:0,total:0,unlocked:[]};
+const translations={
+ar:{
+  locate:"موقعي",weather:"الطقس",sea:"البحر",track:"مسار",save:"حفظ",
+  points:"نقاطي",export:"تصدير",group:"المجموعة",share:"مشاركة",
+  search:"بحث",searchPlaceholder:"مدينة، شاطئ أو ميناء...",
+  fullscreen:"ملء الشاشة",night:"الوضع الليلي",close:"إغلاق",
+  weatherTitle:"الطقس والأحوال البحرية",exportTitle:"تصدير البيانات",
+  allData:"النقاط والمسارات المحفوظة",pointsOnly:"النقاط فقط",
+  clearData:"مسح النقاط والمسارات",confirmClear:"تمسح النقاط والمسارات الكل؟ لا يمكن التراجع.",
+  loading:"جاري التحميل...",error:"تعذّر التحميل. أعد المحاولة.",
+  mapError:"تعذّر تحميل مكتبة الخريطة. تحقق من الإنترنت وأعد فتح الصفحة.",
+  storageError:"تعذّر حفظ البيانات على هذا الجهاز.",
+  noResults:"لا توجد نتائج",enterSearch:"اكتب اسم مكان",
+  gpsWait:"الموقع غير متاح بعد. فعّل GPS واسمح بالوصول للموقع.",
+  gpsError:"تعذّر تحديد الموقع. تحقق من الإذن وGPS واتصال HTTPS.",
+  gpsUnsupported:"تحديد الموقع غير مدعوم هنا.",accuracy:"الدقة",
+  trackStart:"بدأ تسجيل المسار",trackStop:"توقف المسار وتم حفظه",
+  trackEmpty:"توقف المسار؛ لا توجد نقاط كافية لحفظه",
+  samples:"نقاط المسار",distance:"المسافة",km:"كم",m:"م",seconds:"ث",
+  point:"نقطة صيد",pointName:"اسم نقطة الصيد",saved:"تم الحفظ",
+  noPoints:"لا توجد نقاط محفوظة",noData:"لا توجد بيانات للتصدير",
+  deleted:"تم المسح",downloaded:"تم تجهيز ملف التصدير",
+  groupMissing:"ضع رابط مجموعة واتساب داخل الإعدادات أولاً.",
+  locationMessage:"موقعي — Redline Fishing",
+  current:"الطقس الحالي",temperature:"حرارة الهواء",feels:"المحسوسة",
+  humidity:"الرطوبة",clouds:"الغيوم",rain:"الهطول",pressure:"الضغط الجوي",
+  wind:"الرياح",windSpeed:"سرعة الرياح",direction:"الاتجاه",
+  marine:"الأحوال البحرية",waveHeight:"ارتفاع الموج",wavePeriod:"فترة الموج",
+  waveDirection:"اتجاه الموج",swell:"ارتفاع الموج الطويل",
+  currentSpeed:"سرعة التيار",currentDirection:"اتجاه التيار",
+  marineMissing:"البيانات البحرية غير متاحة لهذا الموقع.",
+  forecast:"توقعات الساعات القادمة",hour:"الوقت",rainChance:"احتمال المطر",
+  forecastMissing:"تعذّر تحميل التوقعات الساعية.",
+  source:"المصدر: Open-Meteo",time:"وقت البيانات",timezone:"المنطقة الزمنية",
+  disclaimer:"هذه بيانات نماذج وتوقعات، وليست تأكيداً للحالة الفعلية أو ضماناً لسلامة الإبحار.",
+  defaultLocation:"موقع افتراضي: لم يتم تحديد موقعك بعد.",
+  air:"الهواء",seaTime:"البحر",unknown:"غير متاح",sun:"الشمس",
+  sunrise:"الشروق",sunset:"الغروب",uv:"أقصى مؤشر UV",
+  clear:"صافي",partly:"غائم جزئياً",overcast:"غائم",fog:"ضباب",
+  drizzle:"رذاذ",rainy:"مطر",snow:"ثلوج",storm:"عاصفة رعدية",
+  directions:["شمال","شمال شرقي","شرق","جنوب شرقي","جنوب","جنوب غربي","غرب","شمال غربي"]
+},
+fr:{
+  locate:"Position",weather:"Météo",sea:"Mer",track:"Parcours",save:"Enregistrer",
+  points:"Mes points",export:"Exporter",group:"Groupe",share:"Partager",
+  search:"Chercher",searchPlaceholder:"Ville, plage ou port...",
+  fullscreen:"Plein écran",night:"Mode nuit",close:"Fermer",
+  weatherTitle:"Météo et conditions marines",exportTitle:"Exporter les données",
+  allData:"Points et parcours enregistrés",pointsOnly:"Points uniquement",
+  clearData:"Effacer les points et parcours",confirmClear:"Effacer tous les points et parcours ? Action irréversible.",
+  loading:"Chargement...",error:"Chargement impossible. Réessayez.",
+  mapError:"Impossible de charger la carte. Vérifiez Internet et rechargez la page.",
+  storageError:"Impossible d'enregistrer les données sur cet appareil.",
+  noResults:"Aucun résultat",enterSearch:"Saisissez un lieu",
+  gpsWait:"Position indisponible. Activez le GPS et autorisez la localisation.",
+  gpsError:"Localisation impossible. Vérifiez les autorisations, le GPS et HTTPS.",
+  gpsUnsupported:"Géolocalisation indisponible ici.",accuracy:"Précision",
+  trackStart:"Enregistrement du parcours démarré",trackStop:"Parcours arrêté et enregistré",
+  trackEmpty:"Parcours arrêté : pas assez de points pour l'enregistrer",
+  samples:"Points du parcours",distance:"Distance",km:"km",m:"m",seconds:"s",
+  point:"Point de pêche",pointName:"Nom du point de pêche",saved:"Enregistré",
+  noPoints:"Aucun point enregistré",noData:"Aucune donnée à exporter",
+  deleted:"Données effacées",downloaded:"Fichier d'export préparé",
+  groupMissing:"Ajoutez d'abord le lien du groupe WhatsApp dans les paramètres.",
+  locationMessage:"Ma position — Redline Fishing",
+  current:"Météo actuelle",temperature:"Température de l'air",feels:"Ressenti",
+  humidity:"Humidité",clouds:"Couverture nuageuse",rain:"Précipitations",pressure:"Pression",
+  wind:"Vent",windSpeed:"Vitesse du vent",direction:"Direction",
+  marine:"Conditions marines",waveHeight:"Hauteur des vagues",wavePeriod:"Période des vagues",
+  waveDirection:"Direction des vagues",swell:"Hauteur de la houle",
+  currentSpeed:"Vitesse du courant",currentDirection:"Direction du courant",
+  marineMissing:"Données marines indisponibles pour ce lieu.",
+  forecast:"Prévisions horaires",hour:"Heure",rainChance:"Risque de pluie",
+  forecastMissing:"Prévisions horaires indisponibles.",
+  source:"Source : Open-Meteo",time:"Heure des données",timezone:"Fuseau horaire",
+  disclaimer:"Données issues de modèles et de prévisions : elles ne confirment pas les conditions réelles et ne garantissent pas la sécurité en mer.",
+  defaultLocation:"Position par défaut : votre position n'a pas encore été déterminée.",
+  air:"Atmosphère",seaTime:"Mer",unknown:"Indisponible",sun:"Soleil",
+  sunrise:"Lever",sunset:"Coucher",uv:"Indice UV maximal",
+  clear:"Ciel dégagé",partly:"Partiellement nuageux",overcast:"Couvert",fog:"Brouillard",
+  drizzle:"Bruine",rainy:"Pluie",snow:"Neige",storm:"Orage",
+  directions:["N","NE","E","SE","S","SO","O","NO"]
 }
-function saveAch(s){localStorage.setItem(ACH_KEY,JSON.stringify(s));}
-function checkAch(){
-  let s=loadAch(),changed=false;
-  defaultAchievements.forEach(a=>{
-    if(!s.unlocked.includes(a.id)&&a.check(s)){
-      s.unlocked.push(a.id);s.total=s.unlocked.length;changed=true;
-      showAchToast(a);
-    }
-  });
-  if(changed)saveAch(s);
-  return s;
+};
+const t=key=>translations[lang][key] ?? key;
+const paths={
+locate:'<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/>',
+weather:'<path d="M7 18a4 4 0 1 1 1-8 5 5 0 0 1 9 2 3 3 0 0 1 0 6H7M5 2v2M2 6l2 1m6-4-1 2"/>',
+sea:'<path d="M2 7q3-4 6 0t6 0t6 0M2 12q3-4 6 0t6 0t6 0M2 17q3-4 6 0t6 0t6 0"/>',
+track:'<circle cx="5" cy="5" r="2"/><circle cx="19" cy="19" r="2"/><path d="M7 5h8a4 4 0 0 1 0 8H9a3 3 0 0 0 0 6h8"/>',
+save:'<path d="M3 3h14l4 4v14H3ZM7 3v6h10V3M7 21v-8h10v8"/>',
+points:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V2h6v2M9 10h6m-6 5h6"/>',
+export:'<path d="M12 16V3m-5 5 5-5 5 5M4 15v6h16v-6"/>',
+group:'<circle cx="9" cy="8" r="3"/><path d="M3 21v-3a6 6 0 0 1 12 0v3m1-16a3 3 0 0 1 0 6m2 4a5 5 0 0 1 3 5"/>',
+share:'<circle cx="6" cy="12" r="3"/><circle cx="18" cy="5" r="3"/><circle cx="18" cy="19" r="3"/><path d="m9 10 6-4m-6 8 6 4"/>',
+moon:'<path d="M20 14A9 9 0 0 1 10 3a9 9 0 1 0 10 11Z"/>',
+fullscreen:'<path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/>',
+search:'<circle cx="10" cy="10" r="6"/><path d="m15 15 6 6"/>',
+close:'<path d="m6 6 12 12M6 18 18 6"/>',
+trash:'<path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7m4-7v7"/>',
+wind:'<path d="M3 8h12a3 3 0 1 0-3-3M3 12h16a3 3 0 1 1-3 3M3 16h5"/>',
+sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1"/>'
+};
+function icon(name){
+  return `<svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"
+    aria-hidden="true">${paths[name]||paths.weather}</svg>`;
 }
-function showAchToast(a){
-  const t=document.getElementById('achieveToast');
-  document.querySelector('#achieveToast .at-ico').textContent=a.icon;
-  document.querySelector('#achieveToast .at-title').textContent='🏆 إنجاز: '+a.name;
-  document.getElementById('achieveToastDesc').textContent=a.desc;
-  t.classList.add('show');
-  if(navigator.vibrate)navigator.vibrate([100,80,100,80,200]);
-  setTimeout(()=>t.classList.remove('show'),3500);
-}
-function renderAch(){
-  const s=loadAch(),grid=document.getElementById('achieveGrid');
-  grid.innerHTML='';
-  defaultAchievements.forEach(a=>{
-    const unlocked=s.unlocked.includes(a.id);
-    const div=document.createElement('div');
-    div.className='achieve-card '+(unlocked?'unlocked':'locked');
-    div.innerHTML=`<div class="ach-ico">${a.icon}</div><div class="ach-name">${a.name}</div><div class="ach-desc">${a.desc}</div><div class="ach-status" style="color:${unlocked?'#FFD700':'#5a6480'}">${unlocked?'✅ مكتمل':'🔒 مقفل'}</div>`;
-    grid.appendChild(div);
-  });
-}
-
-/* ===== القمر (مُصحَّح) ===== */
-function getMoonPhase(date){
-  let year=date.getFullYear(); // ✅ تغيير من const إلى let
-  let month=date.getMonth()+1; // ✅ تغيير من const إلى let
-  const day=date.getDate();
-  if(month<=2){year--;month+=12;}
-  month++;
-  let c=365.25*year,e=30.6001*month,jd=c+e+day-694039.09;
-  jd/=29.5305882;
-  let b=parseInt(jd);jd-=b;b=Math.round(jd*8);
-  if(b>=8)b=0;
-  const phases=['🌑 محاق','🌒 هلال صاعد','🌓 تربيع أول','🌔 أحدب متزايد','🌕 بدر','🌖 أحدب متناقص','🌗 تربيع آخر','🌘 هلال هابط'];
-  const names=['محاق','هلال صاعد','تربيع أول','أحدب متزايد','بدر','أحدب متناقص','تربيع آخر','هلال هابط'];
-  const illumination=Math.round((1-Math.cos(2*Math.PI*(jd-b)))/2*100);
-  return{phase:phases[b],name:names[b],illumination,index:b};
-}
-
-async function fetchSunData(lat,lng){
-  try{
-    const res=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=sunrise,sunset,uv_index_max&timezone=auto&forecast_days=1`);
-    const d=await res.json();
-    if(d.daily)return{sunrise:d.daily.sunrise[0],sunset:d.daily.sunset[0],uv:d.daily.uv_index_max[0]};
-  }catch(e){console.warn('Sun error:',e);}
-  return null;
-}
-
-/* ===== المد والجزر ===== */
-function calcTides(lat,lng,date){
-  const moon=getMoonPhase(date);
-  const tf=moon.index===0||moon.index===4?1.2:moon.index===2||moon.index===6?0.7:1;
-  const base=0.3+(Math.sin((date.getHours()*60+date.getMinutes())/360*Math.PI*2)+1)*0.5;
-  const h=parseFloat((base*tf).toFixed(2));
-  const now=new Date(date),nextHigh=new Date(now);
-  const highHours=[0,6,12,18];
-  let hh=highHours[0];
-  for(let h of highHours){if(h>now.getHours()){hh=h;break;}hh=h;}
-  nextHigh.setHours(hh,0,0,0);
-  if(nextHigh<=now)nextHigh.setHours(hh+6);
-  const nextLow=new Date(nextHigh);nextLow.setHours(nextLow.getHours()+6);
-  return{height:h,status:h>0.8?'🌊 مد عالي':h>0.4?'🌊 مد متوسط':'🌊 جزر',
-    nextHigh:nextHigh.toLocaleTimeString('ar-TN',{hour:'2-digit',minute:'2-digit'}),
-    nextLow:nextLow.toLocaleTimeString('ar-TN',{hour:'2-digit',minute:'2-digit'})};
-}
-
-/* ===== Chart ===== */
-let weatherChart=null;
-async function fetchHourly(lat,lng){
-  const r=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,precipitation_probability,wind_speed_10m,weather_code&timezone=auto&forecast_hours=24`);
-  return await r.json();
-}
-function renderChart(data){
-  if(weatherChart){weatherChart.destroy();weatherChart=null;}
-  const hourly=data.hourly;
-  if(!hourly||!hourly.time)return;
-  const labels=hourly.time.map(t=>new Date(t).getHours()+':00');
-  const ctx=document.getElementById('weatherChartCanvas');
-  if(!ctx)return;
-  weatherChart=new Chart(ctx,{type:'line',data:{labels,datasets:[
-    {label:'🌡️ درجة الحرارة (°C)',data:hourly.temperature_2m,borderColor:'#ff5252',backgroundColor:'rgba(255,82,82,.1)',fill:true,tension:.4,yAxisID:'y'},
-    {label:'💨 الرياح (كم/س)',data:hourly.wind_speed_10m,borderColor:'#42A5F5',backgroundColor:'rgba(66,165,245,.1)',fill:true,tension:.4,yAxisID:'y1'},
-    {label:'🌧️ احتمال المطر (%)',data:hourly.precipitation_probability,borderColor:'#66BB6A',backgroundColor:'rgba(102,187,106,.1)',fill:true,tension:.4,yAxisID:'y'}
-  ]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},
-    plugins:{legend:{labels:{color:'#aebacf',font:{size:10},boxWidth:12,padding:8}}},
-    scales:{x:{ticks:{color:'#8892b0',font:{size:9},maxTicksLimit:12},grid:{color:'rgba(255,255,255,.05)'}},
-      y:{type:'linear',display:true,position:'left',ticks:{color:'#8892b0',font:{size:9}},grid:{color:'rgba(255,255,255,.05)'},title:{display:true,text:'°C / %',color:'#8892b0',font:{size:10}}},
-      y1:{type:'linear',display:true,position:'right',ticks:{color:'#8892b0',font:{size:9}},grid:{display:false},title:{display:true,text:'كم/س',color:'#8892b0',font:{size:10}}}
-    }}});
-}
-
-/* ===== دوال مساعدة ===== */
-function vibrate(){if(navigator.vibrate)navigator.vibrate(30);}
-function toast(msg){
-  vibrate();
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.classList.add('show');
-  clearTimeout(t._timeout);
-  t._timeout=setTimeout(()=>t.classList.remove('show'),2200);
+let toastTimer;
+function toast(message){
+  $("toast").textContent=message;$("toast").hidden=false;
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>$("toast").hidden=true,3500);
 }
 function closePanels(){
-  ['weatherPanel','achievePanel','exportPanel','fishPanel'].forEach(id=>document.getElementById(id).classList.remove('show'));
-  document.getElementById('searchBox').classList.remove('show');
-  document.getElementById('searchResults').classList.remove('show');
+  document.querySelectorAll(".panel").forEach(el=>el.hidden=true);
 }
-
-/* ===== الخريطة ===== */
-const map=L.map('map',{zoomControl:false}).setView([36.77,10.22],13);
-L.control.zoom({position:'bottomleft'}).addTo(map);
-L.control.scale({position:'bottomleft',metric:true,imperial:false}).addTo(map);
-const seaLayer=L.tileLayer('https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png',{maxZoom:18,attribution:'© OpenSeaMap'});
-const baseLayer=L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'});
-baseLayer.addTo(map);
-let seaOn=localStorage.getItem('redline_seaOn')==='true';
-const markersCluster=L.markerClusterGroup({chunkedLoading:true,maxClusterRadius:50,spiderfyOnMaxZoom:true,showCoverageOnHover:false,zoomToBoundsOnClick:true});
-map.addLayer(markersCluster);
-let depthOn=false,depthLayer=null;
-function toggleDepth(){
-  depthOn=!depthOn;
-  document.getElementById('btnDepth').classList.toggle('active',depthOn);
-  if(depthOn){depthLayer=L.tileLayer.wms('https://map.openseamap.org/map/',{layers:'depths',format:'image/png',transparent:true,opacity:.7}).addTo(map);toast('📊 خطوط الأعماق مفعّلة');}
-  else if(depthLayer){map.removeLayer(depthLayer);depthLayer=null;toast('📊 الأعماق متوقفة');}
+function openPanel(id){
+  closePanels();$("searchBox").hidden=true;$(id).hidden=false;
 }
-function applySeaLayer(){
-  document.getElementById('btnSea').classList.toggle('active',seaOn);
-  if(seaOn){map.removeLayer(baseLayer);map.addLayer(seaLayer);}
-  else{if(map.hasLayer(seaLayer))map.removeLayer(seaLayer);if(!map.hasLayer(baseLayer))map.addLayer(baseLayer);}
-}
-applySeaLayer();
-
-/* ===== GPS ===== */
-let myMarker=null,accuracyCircle=null,heading=0,currentLat=36.77,currentLng=10.22,gpsWatchId=null;
-function onGPS(pos){
-  currentLat=pos.coords.latitude;currentLng=pos.coords.longitude;
-  const lat=currentLat,lng=currentLng,acc=pos.coords.accuracy,head=pos.coords.heading||0;
-  heading=head;
-  document.getElementById('coords').innerHTML=lat.toFixed(5)+', '+lng.toFixed(5)+'<small>🧭 '+Math.round(head)+'° · دقة '+Math.round(acc)+'م</small>';
-  if(!myMarker){
-    myMarker=L.marker([lat,lng]).addTo(map).bindPopup('🎣 موقعك').openPopup();
-    accuracyCircle=L.circle([lat,lng],{radius:acc,color:'#d32f2f',fillOpacity:.08}).addTo(map);
-    map.setView([lat,lng],15);
-  }else{myMarker.setLatLng([lat,lng]);accuracyCircle.setLatLng([lat,lng]).setRadius(acc);}
-  if(trackOn){trackPoints.push([lat,lng]);drawTrack();}
-}
-function startGPS(){
-  if(gpsWatchId!==null)return;
-  gpsWatchId=navigator.geolocation.watchPosition(onGPS,()=>{toast('⚠️ فعّل الموقع!');setTimeout(startGPS,5000);},{enableHighAccuracy:true,maximumAge:1000,timeout:10000});
-}
-startGPS();
-
-/* ===== الأزرار ===== */
-document.getElementById('btnLocate').onclick=()=>{vibrate();if(myMarker){map.setView(myMarker.getLatLng(),16);toast('🎯 موقعك الحالي');}else toast('⏳ انتظر GPS...');};
-document.getElementById('btnSea').onclick=()=>{vibrate();seaOn=!seaOn;localStorage.setItem('redline_seaOn',seaOn);applySeaLayer();toast(seaOn?'🌊 خريطة البحر مفعّلة':'🗺️ خريطة عادية');};
-document.getElementById('btnDepth').onclick=()=>{vibrate();toggleDepth();};
-
-/* ===== المسار ===== */
-let trackOn=false,trackPoints=[],trackLine=null,trackDist=0,lastPos=null;
-document.getElementById('btnTrack').onclick=()=>{
-  vibrate();trackOn=!trackOn;
-  document.getElementById('btnTrack').classList.toggle('active',trackOn);
-  document.getElementById('trackInfo').style.display=trackOn?'block':'none';
-  if(trackOn){trackDist=0;lastPos=null;trackPoints=[];toast('🗺️ بدأ تسجيل المسار');}
-  else{const s=loadAch();s.tracks+=1;s.dist=Math.max(s.dist,trackDist);saveAch(s);checkAch();toast('🗺️ توقف - '+trackDist.toFixed(2)+' كم');}
-};
-function drawTrack(){
-  if(trackLine)map.removeLayer(trackLine);
-  trackLine=L.polyline(trackPoints,{color:'#ff1744',weight:4}).addTo(map);
-  if(lastPos&&trackPoints.length>1)trackDist+=map.distance(trackPoints[trackPoints.length-1],trackPoints[trackPoints.length-2])/1000;
-  lastPos=trackPoints[trackPoints.length-1];
-  document.getElementById('trackInfo').innerHTML='📏 '+trackDist.toFixed(2)+' كم<br>📍 نقاط: '+trackPoints.length;
-}
-
-/* ===== النقاط ===== */
-let points=JSON.parse(localStorage.getItem('redline_points')||'[]');
-points.forEach(p=>{const m=L.marker([p.lat,p.lng]).bindPopup('🎣 '+p.name+'<br><small>📍 '+p.lat.toFixed(5)+', '+p.lng.toFixed(5)+'</small>');markersCluster.addLayer(m);});
-document.getElementById('btnSave').onclick=()=>{
-  vibrate();if(!myMarker){toast('⏳ انتظر GPS...');return;}
-  const ll=myMarker.getLatLng(),name='🎣 نقطة '+(points.length+1);
-  points.push({lat:ll.lat,lng:ll.lng,name});
-  localStorage.setItem('redline_points',JSON.stringify(points));
-  const m=L.marker([ll.lat,ll.lng]).bindPopup(name+'<br><small>📍 '+ll.lat.toFixed(5)+', '+ll.lng.toFixed(5)+'</small>');
-  markersCluster.addLayer(m);
-  const s=loadAch();s.points=points.length;saveAch(s);checkAch();
-  toast('💾 تم حفظ النقطة!');
-};
-document.getElementById('btnPoints').onclick=()=>{
-  vibrate();if(!points.length){toast('📋 لا توجد نقاط');return;}
-  alert('📋 نقاطك ('+points.length+'):\n'+points.map((p,i)=>(i+1)+'. '+p.name+'\n   '+p.lat.toFixed(5)+', '+p.lng.toFixed(5)).join('\n\n'));
-};
-
-/* ===== اجتماعي ===== */
-document.getElementById('btnCall').onclick=()=>{
-  vibrate();
-  if(WHATSAPP_GROUP_URL.includes('XXXX')){toast('⚠️ ضع رابط الغروب أولاً!');return;}
-  window.open(WHATSAPP_GROUP_URL,'_blank');toast('📞 فتح غروب المجموعة');
-};
-document.getElementById('btnShare').onclick=()=>{
-  vibrate();if(!myMarker){toast('⏳ انتظر GPS...');return;}
-  const ll=myMarker.getLatLng(),msg=encodeURIComponent('🎣 موقعي الآن (Redline Fishing):\n📍 '+ll.lat.toFixed(5)+', '+ll.lng.toFixed(5)+'\n🗺️ https://maps.google.com/?q='+ll.lat+','+ll.lng);
-  window.open('https://wa.me/?text='+msg,'_blank');
-  const s=loadAch();s.shares+=1;saveAch(s);checkAch();
-  toast('📤 تم تجهيز الموقع');
-};
-document.getElementById('splash').onclick=()=>document.getElementById('splash').style.display='none';
-
-/* ===== ليلي + ملء الشاشة + بحث ===== */
-let nightMode=false;
-document.getElementById('btnNight').onclick=()=>{
-  vibrate();nightMode=!nightMode;
-  document.getElementById('btnNight').classList.toggle('active',nightMode);
-  document.body.classList.toggle('night-mode',nightMode);
-  const s=loadAch();s.night+=1;saveAch(s);checkAch();
-  toast(nightMode?'🌙 ليلي':'☀️ نهاري');
-};
-document.getElementById('btnFullscreen').onclick=()=>{
-  vibrate();
-  if(!document.fullscreenElement&&!document.webkitFullscreenElement){
-    const el=document.documentElement;
-    if(el.requestFullscreen)el.requestFullscreen();else if(el.webkitRequestFullscreen)el.webkitRequestFullscreen();
-  }else{if(document.exitFullscreen)document.exitFullscreen();else if(document.webkitExitFullscreen)document.webkitExitFullscreen();}
-};
-document.getElementById('btnSearch').onclick=()=>{vibrate();closePanels();document.getElementById('searchBox').classList.toggle('show');if(document.getElementById('searchBox').classList.contains('show'))document.getElementById('searchInput').focus();};
-async function searchLocation(q){const r=await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&accept-language=ar`);return await r.json();}
-document.getElementById('searchBtn').onclick=async()=>{
-  const q=document.getElementById('searchInput').value.trim();
-  if(!q){toast('🔍 اكتب اسم موقع');return;}
-  const rd=document.getElementById('searchResults');
-  rd.innerHTML='<div style="padding:14px;color:#8892b0;text-align:center;">⏳ جاري البحث...</div>';rd.classList.add('show');
-  try{
-    const results=await searchLocation(q);
-    if(!results.length){rd.innerHTML='<div style="padding:14px;color:#ff5252;text-align:center;">❌ لا توجد نتائج</div>';return;}
-    const s=loadAch();s.searches+=1;saveAch(s);checkAch();
-    rd.innerHTML=results.map(r=>`<div class="searchResultItem" data-lat="${r.lat}" data-lon="${r.lon}" data-name="${r.display_name}"><div class="sr-title">${r.display_name.split(',')[0]}</div><div class="sr-desc">${r.display_name.split(',').slice(1,4).join('، ')}</div></div>`).join('');
-    document.querySelectorAll('.searchResultItem').forEach(el=>{el.onclick=function(){const lat=parseFloat(this.dataset.lat),lon=parseFloat(this.dataset.lon);map.setView([lat,lon],15);L.popup().setLatLng([lat,lon]).setContent('📍 '+this.dataset.name.split(',')[0]).openOn(map);document.getElementById('searchBox').classList.remove('show');document.getElementById('searchResults').classList.remove('show');};});
-  }catch(e){rd.innerHTML='<div style="padding:14px;color:#ff5252;text-align:center;">❌ خطأ في البحث</div>';}
-};
-document.getElementById('searchInput').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('searchBtn').click();});
-
-/* ===== الطقس ===== */
-const weatherIcons={0:'☀️',1:'🌤️',2:'⛅',3:'☁️',45:'🌫️',48:'🌫️',51:'🌦️',53:'🌦️',55:'🌦️',56:'🌧️',57:'🌧️',61:'🌧️',63:'🌧️',65:'🌧️',66:'🌧️',67:'🌧️',71:'🌨️',73:'🌨️',75:'🌨️',77:'❄️',80:'🌦️',81:'🌦️',82:'🌦️',85:'🌨️',86:'🌨️',95:'⛈️',96:'⛈️',99:'⛈️'};
-const weatherLabels={0:'صافي',1:'صافي جزئياً',2:'غائم جزئياً',3:'غائم',45:'ضباب',48:'ضباب متجمد',51:'رذاذ خفيف',53:'رذاذ متوسط',55:'رذاذ كثيف',56:'رذاذ متجمد خفيف',57:'رذاذ متجمد كثيف',61:'مطر خفيف',63:'مطر متوسط',65:'مطر غزير',66:'مطر متجمد خفيف',67:'مطر متجمد غزير',71:'ثلج خفيف',73:'ثلج متوسط',75:'ثلج كثيف',77:'حبيبات ثلج',80:'زخات مطر خفيفة',81:'زخات مطر متوسطة',82:'زخات مطر غزيرة',85:'زخات ثلج خفيفة',86:'زخات ثلج كثيفة',95:'عاصفة رعدية',96:'عاصفة رعدية مع برد',99:'عاصفة رعدية مع برد كثيف'};
-function windDirText(d){const dirs=['شمال','شمال شرقي','شرق','جنوب شرقي','جنوب','جنوب غربي','غرب','شمال غربي'];return dirs[Math.round(d/45)%8];}
-async function fetchWeatherMarine(lat,lng){
-  const w=await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,pressure_msl,cloud_cover&timezone=auto`);
-  const wData=await w.json();let mData=null;
-  try{const m=await fetch(`https://marine-api.open-meteo.com/v1/marine?latitude=${lat}&longitude=${lng}&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,ocean_current_velocity,ocean_current_direction&timezone=auto`);mData=await m.json();}catch(e){}
-  return{weather:wData,marine:mData};
-}
-function seaRating(waveH,windS){
-  const r=[];
-  r.push(waveH>1.5?'🌊 الموج مرتفع':waveH>0.8?'🌊 موج متوسط':'✅ البحر هادئ');
-  r.push(windS>40?'💨 رياح قوية جداً':windS>25?'💨 رياح نشطة':windS>10?'🌬️ نسيم خفيف':'✅ رياح مناسبة');
-  return r;
-}
-async function renderWeatherData(data,lat,lng){
-  const w=data.weather,m=data.marine;
-  if(!w||!w.current){document.getElementById('weatherBody').innerHTML='<div class="wp-loading">❌ تعذّر تحميل البيانات.</div>';return;}
-  const c=w.current,code=c.weather_code,icon=weatherIcons[code]||'🌡️',label=weatherLabels[code]||'غير معروف',windDeg=c.wind_direction_10m,windArrow=windDeg!==undefined?`transform:rotate(${windDeg+180}deg)`:'';
-  const mc=m?.current,waveH=mc?.wave_height,rating=seaRating(waveH||0,c.wind_speed_10m||0);
-  const moon=getMoonPhase(new Date()),sunData=await fetchSunData(lat,lng),tides=calcTides(lat,lng,new Date()),tidePercent=Math.min(tides.height/1.4*100,100);
-  document.getElementById('weatherBody').innerHTML=`<div class="wp-cards">
-    <div class="wp-card"><div class="wp-card-title">🌡️ الطقس الحالي</div><div class="wp-grid">
-      <div class="wp-item"><div class="emoji">${icon}</div><div class="val">${c.temperature_2m}<small>°C</small></div><div class="lbl">${label}</div></div>
-      <div class="wp-item"><div class="emoji">🤔</div><div class="val">${c.apparent_temperature}<small>°C</small></div><div class="lbl">يشعر بها</div></div>
-      <div class="wp-item"><div class="emoji">💧</div><div class="val">${c.relative_humidity_2m}<small>%</small></div><div class="lbl">الرطوبة</div></div>
-      <div class="wp-item"><div class="emoji">☁️</div><div class="val">${c.cloud_cover}<small>%</small></div><div class="lbl">الغيوم</div></div>
-      <div class="wp-item"><div class="emoji">📊</div><div class="val">${c.precipitation||0}<small>مم</small></div><div class="lbl">هطول</div></div>
-      <div class="wp-item"><div class="emoji">🔽</div><div class="val">${c.pressure_msl}<small>hPa</small></div><div class="lbl">الضغط الجوي</div></div>
-    </div></div>
-    <div class="wp-card"><div class="wp-card-title">💨 الرياح</div>
-      <div style="display:flex;align-items:center;gap:16px;justify-content:center;padding:8px 0;">
-        <div style="text-align:center;"><div class="wind-arrow" style="${windArrow}">🧭</div><div class="val" style="font-size:18px;margin-top:4px;">${windDirText(windDeg||0)}</div></div>
-        <div style="text-align:center;"><div class="val">${c.wind_speed_10m}<small> كم/س</small></div><div class="lbl">سرعة الرياح</div></div>
-      </div>
-    </div>
-    ${mc?`<div class="wp-card"><div class="wp-card-title">🌊 الأمواج</div><div class="wp-grid">
-      <div class="wp-item"><div class="emoji">📏</div><div class="val">${(mc.wave_height||0).toFixed(1)}<small> م</small></div><div class="lbl">ارتفاع الموج</div></div>
-      <div class="wp-item"><div class="emoji">🔄</div><div class="val">${mc.wave_period||'--'}<small> ث</small></div><div class="lbl">دوران الموج</div></div>
-      <div class="wp-item"><div class="emoji">🧭</div><div class="val">${mc.wave_direction!==undefined?windDirText(mc.wave_direction):'--'}</div><div class="lbl">اتجاه الموج</div></div>
-      <div class="wp-item"><div class="emoji">🌊</div><div class="val">${(mc.swell_wave_height||0).toFixed(1)}<small> م</small></div><div class="lbl">Swell</div></div>
-      <div class="wp-item"><div class="emoji">💪</div><div class="val">${(mc.ocean_current_velocity||0).toFixed(2)}<small> م/ث</small></div><div class="lbl">التيار</div></div>
-      <div class="wp-item"><div class="emoji">🧭</div><div class="val">${mc.ocean_current_direction!==undefined?windDirText(mc.ocean_current_direction):'--'}</div><div class="lbl">اتجاه التيار</div></div>
-    </div></div>`:'<div class="wp-card"><div class="wp-card-title">🌊 البيانات البحرية</div><div style="text-align:center;color:#8892b0;padding:8px 0;">غير متاحة للموقع الحالي</div></div>'}
-    <div class="wp-card"><div class="wp-card-title">🌊 المد والجزر</div>
-      <div style="text-align:center;"><span style="font-size:24px;">${tides.status}</span><div class="val" style="font-size:22px;">${tides.height}<small> م</small></div></div>
-      <div class="tide-bar"><span style="color:#8892b0;font-size:10px;">جزر</span><div class="tide-level"><div class="tide-fill" style="width:${tidePercent}%"></div></div><span style="color:#42A5F5;font-size:10px;">مد</span></div>
-      <div class="tide-times"><div class="tide-time"><div class="tt-val">🔺 ${tides.nextHigh}</div><div>المد القادم</div></div><div class="tide-time"><div class="tt-val">🔻 ${tides.nextLow}</div><div>الجزر القادم</div></div></div>
-    </div>
-    <div class="wp-card"><div class="wp-card-title">🌙 مرحلة القمر</div>
-      <div class="moon-phase"><div class="moon-ico">${moon.phase.split(' ')[0]}</div><div class="moon-name">${moon.name}</div><div class="moon-detail">الإضاءة: ${moon.illumination}%</div></div>
-      ${sunData?`<div style="display:flex;justify-content:space-around;padding:4px 0;border-top:1px solid rgba(255,255,255,.05);">
-        <div style="text-align:center;"><div style="font-size:18px;">🌅</div><div style="color:#fff;font-size:13px;">${new Date(sunData.sunrise).toLocaleTimeString('ar-TN',{hour:'2-digit',minute:'2-digit'})}</div><div style="color:#8892b0;font-size:10px;">الشروق</div></div>
-        <div style="text-align:center;"><div style="font-size:18px;">🌇</div><div style="color:#fff;font-size:13px;">${new Date(sunData.sunset).toLocaleTimeString('ar-TN',{hour:'2-digit',minute:'2-digit'})}</div><div style="color:#8892b0;font-size:10px;">الغروب</div></div>
-        <div style="text-align:center;"><div style="font-size:18px;">☀️</div><div style="color:#fff;font-size:13px;">${sunData.uv}</div><div style="color:#8892b0;font-size:10px;">UV</div></div>
-      </div>`:''}
-    </div>
-    <div class="wp-card"><div class="wp-card-title">📈 توقعات 24 ساعة</div><div id="chartContainer"><canvas id="weatherChartCanvas"></canvas></div></div>
-    <div class="wp-card"><div class="wp-card-title">🎣 تقييم البحر</div>${rating.map(r=>`<div class="${r.startsWith('✅')?'wp-good':'wp-bad'}">${r}</div>`).join('')}</div>
-    <div class="wp-source">📡 NOAA GFS · 📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}</div>
-  </div>`;
-  try{const h=await fetchHourly(lat,lng);renderChart(h);}catch(e){}
-}
-document.getElementById('btnWeather').onclick=async()=>{
-  vibrate();closePanels();
-  document.getElementById('weatherPanel').classList.add('show');
-  document.getElementById('weatherBody').innerHTML='<div class="wp-loading"><div class="spin">🔄</div><p style="margin-top:10px;">جاري تحميل بيانات NOAA...</p></div>';
-  const s=loadAch();s.weather+=1;saveAch(s);checkAch();
-  try{const d=await fetchWeatherMarine(currentLat,currentLng);await renderWeatherData(d,currentLat,currentLng);toast('🌤️ تم تحميل الطقس');}
-  catch(e){document.getElementById('weatherBody').innerHTML='<div class="wp-loading">❌ فشل التحميل<br><small style="color:#8892b0;">'+e.message+'</small></div>';}
-};
-document.getElementById('closeWeather').onclick=()=>{document.getElementById('weatherPanel').classList.remove('show');if(weatherChart){weatherChart.destroy();weatherChart=null;}};
-
-/* ===== الأسماك ===== */
-document.getElementById('btnFish').onclick=()=>{vibrate();closePanels();document.getElementById('fishPanel').classList.add('show');const grid=document.getElementById('fishGrid');if(!grid.children.length)grid.innerHTML=fishData.map(f=>`<div class="fish-card"><div class="fish-ico">${f.ico}</div><div class="fish-name">${f.name}</div><div class="fish-info">🗓️ ${f.season}<br>📏 ${f.depth}<br>🍽️ ${f.bait}<br><small>${f.desc}</small></div></div>`).join('');};
-document.getElementById('closeFish').onclick=()=>document.getElementById('fishPanel').classList.remove('show');
-
-/* ===== الإنجازات ===== */
-document.getElementById('btnAchieve').onclick=()=>{vibrate();closePanels();renderAch();document.getElementById('achievePanel').classList.add('show');};
-document.getElementById('closeAchieve').onclick=()=>document.getElementById('achievePanel').classList.remove('show');
-
-/* ===== التصدير ===== */
-document.getElementById('btnExport').onclick=()=>{vibrate();closePanels();document.getElementById('exportPanel').classList.add('show');};
-document.getElementById('closeExport').onclick=()=>document.getElementById('exportPanel').classList.remove('show');
-function downloadFile(content,fileName,mimeType){const b=new Blob([content],{type:mimeType}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=fileName;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(u);}
-document.getElementById('exportJSON').onclick=()=>{vibrate();const d={app:'Redline Fishing',date:new Date().toISOString(),points:JSON.parse(localStorage.getItem('redline_points')||'[]'),stats:loadAch()};downloadFile(JSON.stringify(d,null,2),'redline_fishing_data.json','application/json');toast('📄 تم تصدير JSON');};
-document.getElementById('exportCSV').onclick=()=>{vibrate();const p=JSON.parse(localStorage.getItem('redline_points')||'[]');if(!p.length){toast('📋 لا توجد نقاط');return;}let c='الاسم,خط العرض,خط الطول\n';p.forEach(x=>c+=`${x.name},${x.lat},${x.lng}\n`);downloadFile(c,'redline_points.csv','text/csv;charset=utf-8');toast('📊 تم تصدير CSV');};
-document.getElementById('exportGPX').onclick=()=>{vibrate();const p=JSON.parse(localStorage.getItem('redline_points')||'[]');if(!p.length){toast('📋 لا توجد نقاط');return;}let g=`<?xml version="1.0" encoding="UTF-8"?><gpx version="1.1" creator="Redline Fishing" xmlns="http://www.topografix.com/GPX/1/1"><metadata><name>Redline Fishing Points</name></metadata>`;p.forEach(x=>g+=`<wpt lat="${x.lat}" lon="${x.lng}"><name>${x.name}</name></wpt>`);g+='</gpx>';downloadFile(g,'redline_points.gpx','application/gpx+xml');toast('📍 تم تصدير GPX');};
-document.getElementById('clearData').onclick=()=>{vibrate();if(confirm('⚠️ مسح جميع البيانات؟ لا يمكن التراجع!')){localStorage.removeItem('redline_points');localStorage.removeItem('redline_achievements');markersCluster.clearLayers();points=[];toast('🗑️ تم المسح');}};
-
-/* ===== النقر على الخريطة ===== */
-map.on('click',async function(e){
-  const lat=e.latlng.lat,lng=e.latlng.lng;
-  const popup=L.popup({className:'map-weather-popup',maxWidth:260,closeButton:true}).setLatLng([lat,lng]).setContent('<div class="popup-loading"><div class="spin" style="display:inline-block;animation:spin 1s linear infinite;font-size:24px;">🔄</div><p style="margin-top:8px;">جلب بيانات الطقس...</p></div>').openOn(map);
-  try{
-    const d=await fetchWeatherMarine(lat,lng),w=d.weather,m=d.marine;
-    if(!w||!w.current){popup.setContent('<div style="text-align:center;padding:10px;color:#ff5252;">❌ تعذّر التحميل</div>');return;}
-    const c=w.current,code=c.weather_code,icon=weatherIcons[code]||'🌡️',label=weatherLabels[code]||'',mc=m?.current,waveH=mc?.wave_height;
-    let html=`<div class="popup-title">${icon} ${label}</div><div class="popup-row"><span class="popup-label">🌡️ الحرارة</span><span class="popup-value">${c.temperature_2m}°C</span></div><div class="popup-row"><span class="popup-label">💨 الرياح</span><span class="popup-value">${c.wind_speed_10m} كم/س</span></div>`;
-    if(mc&&mc.wave_height!==undefined)html+=`<div class="popup-row"><span class="popup-label">🌊 الموج</span><span class="popup-value">${mc.wave_height.toFixed(1)} م</span></div>`;
-    else html+=`<div class="popup-row"><span class="popup-label">🌊 الموج</span><span class="popup-value" style="color:#8892b0;">غير متاح</span></div>`;
-    const rating=seaRating(waveH||0,c.wind_speed_10m||0),bad=rating.filter(r=>!r.startsWith('✅')).length;
-    html+=`<div class="popup-row"><span class="popup-label">🎣 التقييم</span><span class="popup-value ${bad===0?'popup-good':bad<=1?'':'popup-bad'}" style="${bad<=1&&bad>0?'color:#ffab40;':''}">${bad===0?'✅ مناسب':bad<=1?'⚠️ بحذر':'❌ غير مناسب'}</span></div>`;
-    html+=`<div style="text-align:center;color:#5a6480;font-size:9px;margin-top:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,.06);">📍 ${lat.toFixed(4)}, ${lng.toFixed(4)}</div>`;
-    popup.setContent(html);
-  }catch(err){popup.setContent(`<div style="text-align:center;padding:10px;color:#ff5252;">❌ خطأ</div>`);}
+document.querySelectorAll("[data-close]").forEach(button=>{
+  button.onclick=()=>$(button.dataset.close).hidden=true;
+});
+document.addEventListener("keydown",e=>{
+  if(e.key==="Escape"){closePanels();$("searchBox").hidden=true;}
 });
 
-/* ===== PWA ===== */
-(function(){const manifest={name:'Redline Fishing',short_name:'RL Fishing',description:'🎣 دليل الصيد بالكاياك',start_url:window.location.href.split('?')[0],display:'standalone',orientation:'portrait',background_color:'#1a1a2e',theme_color:'#d32f2f',icons:[{src:'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" fill="#d32f2f" rx="32"/><text x="96" y="130" text-anchor="middle" fill="white" font-size="100">🎣</text></svg>'),sizes:'192x192',type:'image/svg+xml'},{src:'data:image/svg+xml,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" fill="#d32f2f" rx="64"/><text x="256" y="340" text-anchor="middle" fill="white" font-size="250">🎣</text></svg>'),sizes:'512x512',type:'image/svg+xml',purpose:'maskable'}]};const blob=new Blob([JSON.stringify(manifest)],{type:'application/json'});document.getElementById('manifestLink').href=URL.createObjectURL(blob);})();
-if('serviceWorker'in navigator){const sw=`const C='redline-v1';self.addEventListener('install',e=>{e.waitUntil(caches.open(C).then(c=>c.addAll(['${window.location.href}'])));self.skipWaiting();});self.addEventListener('activate',e=>e.waitUntil(clients.claim()));self.addEventListener('fetch',e=>{e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).catch(()=>new Response('🛶 Redline Fishing - غير متصل',{status:200}))));});`;const blob=new Blob([sw],{type:'application/javascript'});navigator.serviceWorker.register(URL.createObjectURL(blob),{scope:'/'}).catch(()=>{});}
+let map=null,cluster=null,myMarker=null,accuracyCircle=null;
+let gpsPosition=null,gpsWatch=null,trackOn=false,trackPoints=[],trackLine=null,trackDist=0;
+let weatherChart=null,weatherCache=null,weatherBusy=false,weatherRequest=0;
+let searchController=null;
+let points=read("redline_points",[]);
+let tracks=read("redline_tracks",[]);
+if(!Array.isArray(points))points=[];
+points=points.filter(p=>p&&Number.isFinite(p.lat)&&Number.isFinite(p.lng));
+if(!Array.isArray(tracks))tracks=[];
+let seaOn=read("redline_seaOn",false);
+let baseLayer,seaLayer;
 
-/* ===== تهيئة ===== */
-checkAch();
-setTimeout(()=>document.getElementById('splash').style.display='none',2200);
+function applyLanguage(){
+  document.documentElement.lang=lang;
+  document.documentElement.dir=lang==="ar"?"rtl":"ltr";
+  $("btnLanguage").textContent=lang==="ar"?"FR":"عربي";
+  $("btnLanguage").setAttribute("aria-label",lang==="ar"?"Français":"العربية");
+  document.querySelectorAll("[data-i18n]").forEach(el=>el.textContent=t(el.dataset.i18n));
+  document.querySelectorAll("[data-placeholder]").forEach(el=>{
+    el.placeholder=t(el.dataset.placeholder);el.setAttribute("aria-label",el.placeholder);
+  });
+  document.querySelectorAll("[data-icon]").forEach(el=>{
+    el.innerHTML=icon(el.dataset.icon)+(el.dataset.label?`<span>${escapeHTML(t(el.dataset.label))}</span>`:"");
+  });
+  document.querySelectorAll("[data-title]").forEach(el=>{
+    el.title=t(el.dataset.title);el.setAttribute("aria-label",el.title);
+  });
+  $("searchResults").replaceChildren();
+  if(searchController)searchController.abort();
+  updateCoords();updateTrackInfo();renderPoints();
+  if(map){map.closePopup();renderMarkers();}
+  if(weatherBusy)$("weatherBody").innerHTML=`<div class="loading">${t("loading")}</div>`;
+  else if(weatherCache)renderWeather(weatherCache);
+  else $("weatherBody").innerHTML="";
+}
+function applyTheme(){
+  document.body.classList.toggle("dark",dark);
+  $("btnNight").setAttribute("aria-pressed",String(dark));
+  document.querySelector('meta[name="theme-color"]').content=dark?"#111c29":"#f4f7fb";
+  if(weatherCache&&!weatherBusy)renderWeather(weatherCache);
+}
+$("btnLanguage").onclick=()=>{
+  lang=lang==="ar"?"fr":"ar";store("redline_language",lang);applyLanguage();
+};
+$("btnNight").onclick=()=>{
+  dark=!dark;store("redline_dark",dark);applyTheme();
+};
+function updateCoords(){
+  $("coords").textContent=gpsPosition
+    ?`${gpsPosition.lat.toFixed(5)}, ${gpsPosition.lng.toFixed(5)} · ${t("accuracy")} ±${Math.round(gpsPosition.accuracy)} ${t("m")}`
+    :"36.77000, 10.22000";
+}
+function updateTrackInfo(){
+  $("trackInfo").hidden=!trackOn;
+  $("trackInfo").textContent=`${t("distance")}: ${trackDist.toFixed(2)} ${t("km")} · ${t("samples")}: ${trackPoints.length}`;
+  $("btnTrack").classList.toggle("active",trackOn);
+  $("btnTrack").setAttribute("aria-pressed",String(trackOn));
+}
+function applySea(){
+  if(!map.hasLayer(baseLayer))baseLayer.addTo(map);
+  if(seaOn){if(!map.hasLayer(seaLayer))seaLayer.addTo(map);}
+  else if(map.hasLayer(seaLayer))map.removeLayer(seaLayer);
+  $("btnSea").classList.toggle("active",!!seaOn);
+  $("btnSea").setAttribute("aria-pressed",String(!!seaOn));
+}
+function renderMarkers(){
+  if(!cluster)return;
+  cluster.clearLayers();
+  points.forEach((p,i)=>{
+    const content=document.createElement("div");
+    content.textContent=`${p.name||t("point")+" "+(i+1)} — ${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
+    cluster.addLayer(L.marker([p.lat,p.lng]).bindPopup(content));
+  });
+}
+function startGPS(){
+  if(!navigator.geolocation){toast(t("gpsUnsupported"));return;}
+  if(gpsWatch!==null)return;
+  gpsWatch=navigator.geolocation.watchPosition(pos=>{
+    const c=pos.coords,first=!gpsPosition;
+    gpsPosition={lat:c.latitude,lng:c.longitude,accuracy:c.accuracy};
+    updateCoords();
+    const ll=[c.latitude,c.longitude];
+    if(!myMarker){
+      myMarker=L.marker(ll).addTo(map);
+      accuracyCircle=L.circle(ll,{radius:c.accuracy,color:"#176eae",fillOpacity:.08}).addTo(map);
+    }else{
+      myMarker.setLatLng(ll);accuracyCircle.setLatLng(ll).setRadius(c.accuracy);
+    }
+    if(first)map.setView(ll,15);
+    if(trackOn){
+      if(trackPoints.length)trackDist+=map.distance(trackPoints.at(-1),ll)/1000;
+      trackPoints.push(ll);
+      if(!trackLine)trackLine=L.polyline(trackPoints,{color:"#d32f2f",weight:4}).addTo(map);
+      else trackLine.setLatLngs(trackPoints);
+      updateTrackInfo();
+    }
+  },()=>toast(t("gpsError")),{enableHighAccuracy:true,maximumAge:1000,timeout:15000});
+}
+$("btnLocate").onclick=()=>{
+  if(!map)return;
+  if(gpsPosition)map.setView([gpsPosition.lat,gpsPosition.lng],16);
+  else{startGPS();toast(t("gpsWait"));}
+};
+$("btnSea").onclick=()=>{
+  if(!map)return;seaOn=!seaOn;store("redline_seaOn",seaOn);applySea();
+};
+$("btnTrack").onclick=()=>{
+  if(!map)return;
+  if(!trackOn){
+    if(!gpsPosition){toast(t("gpsWait"));return;}
+    trackOn=true;trackDist=0;trackPoints=[];
+    if(trackLine){map.removeLayer(trackLine);trackLine=null;}
+    toast(t("trackStart"));
+  }else{
+    trackOn=false;
+    if(trackPoints.length>1){
+      tracks.push({date:new Date().toISOString(),distance:trackDist,points:trackPoints.slice()});
+      if(store("redline_tracks",tracks))toast(t("trackStop"));
+    }else toast(t("trackEmpty"));
+  }
+  updateTrackInfo();
+};
+$("btnSave").onclick=()=>{
+  if(!gpsPosition){toast(t("gpsWait"));return;}
+  const name=prompt(t("pointName"),`${t("point")} ${points.length+1}`);
+  if(name===null)return;
+  points.push({lat:gpsPosition.lat,lng:gpsPosition.lng,name:name.trim()||t("point")});
+  const saved=store("redline_points",points);renderMarkers();renderPoints();
+  if(saved)toast(t("saved"));
+};
+function renderPoints(){
+  const body=$("pointsBody");body.replaceChildren();
+  if(!points.length){body.textContent=t("noPoints");return;}
+  points.forEach((p,i)=>{
+    const button=document.createElement("button");button.className="action";
+    button.innerHTML=icon("locate");
+    const text=document.createElement("span");text.textContent=p.name||`${t("point")} ${i+1}`;
+    const small=document.createElement("small");
+    small.dir="ltr";small.textContent=`${p.lat.toFixed(5)}, ${p.lng.toFixed(5)}`;
+    text.appendChild(small);button.appendChild(text);
+    button.onclick=()=>{if(map){closePanels();map.setView([p.lat,p.lng],16);}};
+    body.appendChild(button);
+  });
+}
+$("btnPoints").onclick=()=>{renderPoints();openPanel("pointsPanel");};
+$("btnExport").onclick=()=>openPanel("exportPanel");
+$("btnCall").onclick=()=>{
+  if(WHATSAPP_GROUP_URL.includes("XXXX")){toast(t("groupMissing"));return;}
+  window.open(WHATSAPP_GROUP_URL,"_blank","noopener,noreferrer");
+};
+$("btnShare").onclick=()=>{
+  if(!gpsPosition){toast(t("gpsWait"));return;}
+  const {lat,lng}=gpsPosition;
+  const message=`${t("locationMessage")}\n${lat.toFixed(5)}, ${lng.toFixed(5)}\nhttps://maps.google.com/?q=${lat},${lng}`;
+  window.open("https://wa.me/?text="+encodeURIComponent(message),"_blank","noopener,noreferrer");
+};
+$("btnFullscreen").onclick=async()=>{
+  try{
+    if(document.fullscreenElement)await document.exitFullscreen();
+    else if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();
+    if(map)setTimeout(()=>map.invalidateSize(),150);
+  }catch{toast(t("error"));}
+};
+$("btnSearch").onclick=()=>{
+  const open=$("searchBox").hidden;closePanels();$("searchBox").hidden=!open;
+  if(open)$("searchInput").focus();
+};
+$("searchBtn").onclick=async()=>{
+  const q=$("searchInput").value.trim();if(!q){toast(t("enterSearch"));return;}
+  if(searchController)searchController.abort();
+  searchController=new AbortController();
+  const controller=searchController,body=$("searchResults");
+  body.textContent=t("loading");
+  try{
+    const response=await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(q)}&format=json&limit=5&accept-language=${lang}`,
+      {signal:controller.signal});
+    if(!response.ok)throw Error();
+    const results=await response.json();body.replaceChildren();
+    if(!results.length){body.textContent=t("noResults");return;}
+    results.forEach(r=>{
+      const button=document.createElement("button");button.className="result";
+      button.textContent=r.display_name;
+      button.onclick=()=>{
+        if(!map)return;
+        map.setView([Number(r.lat),Number(r.lon)],15);
+        $("searchBox").hidden=true;
+        const content=document.createElement("div");content.textContent=r.display_name;
+        L.popup().setLatLng([Number(r.lat),Number(r.lon)]).setContent(content).openOn(map);
+      };
+      body.appendChild(button);
+    });
+  }catch(e){if(e.name!=="AbortError")body.textContent=t("error");}
+};
+$("searchInput").addEventListener("keydown",e=>{
+  if(e.key==="Enter")$("searchBtn").click();
+});
+
+/* بيانات الطقس: نفس الخدمات الأساسية، مع معالجة القيم الغائبة */
+async function getJSON(url){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),18000);
+  try{
+    const response=await fetch(url,{signal:controller.signal});
+    if(!response.ok)throw Error("HTTP "+response.status);
+    const data=await response.json();if(data.error)throw Error("API");
+    return data;
+  }finally{clearTimeout(timer);}
+}
+async function fetchWeatherMarine(lat,lng){
+  const location=`latitude=${lat}&longitude=${lng}&timezone=auto`;
+  const [weather,marine]=await Promise.all([
+    getJSON(`https://api.open-meteo.com/v1/forecast?${location}&current=temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m,wind_direction_10m,pressure_msl,cloud_cover`),
+    getJSON(`https://marine-api.open-meteo.com/v1/marine?${location}&current=wave_height,wave_direction,wave_period,swell_wave_height,swell_wave_direction,swell_wave_period,ocean_current_velocity,ocean_current_direction`).catch(()=>null)
+  ]);
+  if(!weather.current)throw Error("Missing weather");
+  return {weather,marine};
+}
+function fetchHourly(lat,lng){
+  return getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&hourly=temperature_2m,precipitation_probability,wind_speed_10m,weather_code&timezone=auto&forecast_hours=24`);
+}
+function fetchSun(lat,lng){
+  return getJSON(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&daily=sunrise,sunset,uv_index_max&timezone=auto&forecast_days=1`);
+}
+const valid=n=>typeof n==="number"&&Number.isFinite(n);
+const num=(n,d=1)=>valid(n)?String(Number(n.toFixed(d))):"—";
+function direction(value){
+  return valid(value)?t("directions")[Math.round(((value%360)+360)%360/45)%8]:"—";
+}
+function weatherLabel(code){
+  if(!valid(code))return t("unknown");
+  if(code===0)return t("clear");
+  if(code<=2)return t("partly");
+  if(code===3)return t("overcast");
+  if(code===45||code===48)return t("fog");
+  if(code>=51&&code<=57)return t("drizzle");
+  if((code>=71&&code<=77)||code===85||code===86)return t("snow");
+  if(code>=95)return t("storm");
+  return t("rainy");
+}
+function unit(data,key,fallback=""){
+  return escapeHTML(data?.current_units?.[key] ?? fallback);
+}
+function metric(label,value,suffix=""){
+  return `<div class="metric"><div class="value">${escapeHTML(value)}<small>${suffix}</small></div><div class="label">${escapeHTML(label)}</div></div>`;
+}
+function card(title,content,name="weather"){
+  return `<div class="card"><h3>${icon(name)}${escapeHTML(title)}</h3>${content}</div>`;
+}
+function timeText(value){
+  return typeof value==="string"?escapeHTML(value.replace("T"," · ")):"—";
+}
+function renderWeather(data){
+  if(weatherChart){weatherChart.destroy();weatherChart=null;}
+  const {weather:w,marine:m,hourly:h,sun,lat,lng,isDefault}=data;
+  const c=w.current,mc=m?.current;
+  let html=isDefault?`<div class="notice">${t("defaultLocation")}</div>`:"";
+  html+=card(t("current"),`
+    <div class="hero">
+      <div><div class="temperature">${num(c.temperature_2m)}<small>°C</small></div>
+      <div class="muted">${weatherLabel(c.weather_code)}</div></div>${icon("weather")}
+    </div>
+    <div class="muted" dir="ltr">${lat.toFixed(4)}, ${lng.toFixed(4)}</div>
+    <div class="grid" style="margin-top:14px">
+      ${metric(t("feels"),num(c.apparent_temperature),"°C")}
+      ${metric(t("humidity"),num(c.relative_humidity_2m,0),"%")}
+      ${metric(t("clouds"),num(c.cloud_cover,0),"%")}
+      ${metric(t("rain"),num(c.precipitation),unit(w,"precipitation","mm"))}
+      ${metric(t("pressure"),num(c.pressure_msl,0),unit(w,"pressure_msl","hPa"))}
+      ${metric(t("temperature"),num(c.temperature_2m),"°C")}
+    </div>`);
+  html+=card(t("wind"),`<div class="grid">
+    ${metric(t("windSpeed"),num(c.wind_speed_10m),unit(w,"wind_speed_10m","km/h"))}
+    ${metric(t("direction"),direction(c.wind_direction_10m))}
+    </div>`,"wind");
+  html+=card(t("marine"),mc?`<div class="grid">
+    ${metric(t("waveHeight"),num(mc.wave_height),unit(m,"wave_height"))}
+    ${metric(t("wavePeriod"),num(mc.wave_period),unit(m,"wave_period"))}
+    ${metric(t("waveDirection"),direction(mc.wave_direction))}
+    ${metric(t("swell"),num(mc.swell_wave_height),unit(m,"swell_wave_height"))}
+    ${metric(t("currentSpeed"),num(mc.ocean_current_velocity,2),unit(m,"ocean_current_velocity"))}
+    ${metric(t("currentDirection"),direction(mc.ocean_current_direction))}
+    </div>`:`<div class="muted">${t("marineMissing")}</div>`,"sea");
+  if(sun?.daily){
+    const d=sun.daily;
+    html+=card(t("sun"),`<div class="grid">
+      ${metric(t("sunrise"),d.sunrise?.[0]?.slice(11,16)||"—")}
+      ${metric(t("sunset"),d.sunset?.[0]?.slice(11,16)||"—")}
+      ${metric(t("uv"),num(d.uv_index_max?.[0]))}
+      </div>`,"sun");
+  }
+  if(h?.hourly?.time?.length){
+    const a=h.hourly,units=h.hourly_units||{};
+    html+=card(t("forecast"),`
+      ${typeof Chart!=="undefined"?'<div class="chart-wrap"><canvas id="weatherChartCanvas"></canvas></div>':""}
+      <div class="table-wrap"><table><thead><tr>
+      <th>${t("hour")}</th><th>${t("temperature")} °C</th>
+      <th>${t("wind")} ${escapeHTML(units.wind_speed_10m||"km/h")}</th>
+      <th>${t("rainChance")} %</th></tr></thead><tbody>
+      ${a.time.map((time,i)=>`<tr><td dir="ltr">${escapeHTML(time.slice(5).replace("T"," "))}</td>
+      <td>${num(a.temperature_2m?.[i])}</td><td>${num(a.wind_speed_10m?.[i])}</td>
+      <td>${num(a.precipitation_probability?.[i],0)}</td></tr>`).join("")}
+      </tbody></table></div>`,"track");
+  }else html+=`<div class="notice">${t("forecastMissing")}</div>`;
+  html+=`<div class="notice">${t("disclaimer")}</div>
+    <div class="muted">${t("source")}<br>
+    ${t("time")} — ${t("air")}: <bdi>${timeText(c.time)}</bdi><br>
+    ${t("seaTime")}: <bdi>${timeText(mc?.time)}</bdi><br>
+    ${t("timezone")}: <bdi>${escapeHTML(w.timezone||"—")}</bdi></div>`;
+  $("weatherBody").innerHTML=html;
+  if(h?.hourly&&typeof Chart!=="undefined")renderChart(h);
+}
+function renderChart(data){
+  const canvas=$("weatherChartCanvas");if(!canvas)return;
+  const h=data.hourly,style=getComputedStyle(document.body);
+  const color=style.getPropertyValue("--muted").trim();
+  const grid=style.getPropertyValue("--line").trim();
+  weatherChart=new Chart(canvas,{
+    type:"line",
+    data:{
+      labels:h.time.map(v=>v.slice(11,16)),
+      datasets:[
+        {label:t("temperature")+" °C",data:h.temperature_2m,borderColor:"#d34c4c",yAxisID:"temp",tension:.25,pointRadius:0},
+        {label:t("wind")+" "+(data.hourly_units?.wind_speed_10m||"km/h"),data:h.wind_speed_10m,borderColor:"#2584c8",yAxisID:"wind",tension:.25,pointRadius:0}
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,interaction:{mode:"index",intersect:false},
+      plugins:{legend:{labels:{color,boxWidth:12,font:{size:10}}}},
+      scales:{
+        x:{ticks:{color,maxTicksLimit:6},grid:{display:false}},
+        temp:{position:"left",ticks:{color},grid:{color:grid},title:{display:true,text:"°C",color}},
+        wind:{position:"right",ticks:{color},grid:{drawOnChartArea:false},
+          title:{display:true,text:data.hourly_units?.wind_speed_10m||"km/h",color}}
+      }
+    }
+  });
+}
+$("btnWeather").onclick=async()=>{
+  openPanel("weatherPanel");
+  const id=++weatherRequest;
+  const lat=gpsPosition?.lat??36.77,lng=gpsPosition?.lng??10.22;
+  const isDefault=!gpsPosition;
+  weatherBusy=true;$("weatherBody").innerHTML=`<div class="loading">${t("loading")}</div>`;
+  if(weatherChart){weatherChart.destroy();weatherChart=null;}
+  try{
+    const [base,hourly,sun]=await Promise.all([
+      fetchWeatherMarine(lat,lng),fetchHourly(lat,lng).catch(()=>null),fetchSun(lat,lng).catch(()=>null)
+    ]);
+    if(id!==weatherRequest)return;
+    weatherCache={...base,hourly,sun,lat,lng,isDefault};weatherBusy=false;
+    renderWeather(weatherCache);
+  }catch{
+    if(id!==weatherRequest)return;
+    weatherBusy=false;weatherCache=null;
+    $("weatherBody").innerHTML=`<div class="loading">${t("error")}</div>`;
+  }
+};
+
+/* التصدير: النقاط والمسارات المحفوظة */
+function download(content,name,type){
+  const url=URL.createObjectURL(new Blob([content],{type}));
+  const a=document.createElement("a");a.href=url;a.download=name;
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);toast(t("downloaded"));
+}
+$("exportJSON").onclick=()=>{
+  if(!points.length&&!tracks.length){toast(t("noData"));return;}
+  download(JSON.stringify({app:"Redline Fishing",date:new Date().toISOString(),points,tracks},null,2),
+    "redline_fishing.json","application/json");
+};
+$("exportCSV").onclick=()=>{
+  if(!points.length){toast(t("noPoints"));return;}
+  function cell(value){
+    let s=String(value??"");
+    if(/^[=+\-@\t\r]/.test(s))s="'"+s;
+    return '"'+s.replace(/"/g,'""')+'"';
+  }
+  const rows=[["name","latitude","longitude"],...points.map(p=>[p.name,p.lat,p.lng])];
+  download("\uFEFF"+rows.map(row=>row.map(cell).join(",")).join("\r\n"),
+    "redline_points.csv","text/csv;charset=utf-8");
+};
+$("exportGPX").onclick=()=>{
+  if(!points.length&&!tracks.length){toast(t("noData"));return;}
+  let xml='<?xml version="1.0" encoding="UTF-8"?>';
+  xml+='<gpx version="1.1" creator="Redline Fishing" xmlns="http://www.topografix.com/GPX/1/1">';
+  points.forEach(p=>xml+=`<wpt lat="${p.lat}" lon="${p.lng}"><name>${escapeHTML(p.name)}</name></wpt>`);
+  tracks.forEach(track=>{
+    xml+=`<trk><name>${escapeHTML(track.date)}</name><trkseg>`;
+    (track.points||[]).forEach(p=>{
+      if(Array.isArray(p)&&valid(p[0])&&valid(p[1]))xml+=`<trkpt lat="${p[0]}" lon="${p[1]}"/>`;
+    });
+    xml+="</trkseg></trk>";
+  });
+  xml+="</gpx>";
+  download(xml,"redline_fishing.gpx","application/gpx+xml");
+};
+$("clearData").onclick=()=>{
+  if(!confirm(t("confirmClear")))return;
+  points=[];tracks=[];trackOn=false;trackPoints=[];trackDist=0;
+  if(trackLine&&map){map.removeLayer(trackLine);trackLine=null;}
+  const a=store("redline_points",points),b=store("redline_tracks",tracks);
+  renderMarkers();renderPoints();updateTrackInfo();
+  if(a&&b)toast(t("deleted"));
+};
+
+/* تهيئة */
+applyLanguage();applyTheme();
+if(typeof L==="undefined"){
+  toast(t("mapError"));
+}else{
+  map=L.map("map",{zoomControl:false}).setView([36.77,10.22],13);
+  L.control.zoom({position:"bottomleft"}).addTo(map);
+  L.control.scale({position:"bottomleft",metric:true,imperial:false}).addTo(map);
+  baseLayer=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{
+    maxZoom:19,attribution:"© OpenStreetMap"
+  }).addTo(map);
+  seaLayer=L.tileLayer("https://tiles.openseamap.org/seamark/{z}/{x}/{y}.png",{
+    maxZoom:18,attribution:"© OpenSeaMap",zIndex:2
+  });
+  cluster=typeof L.markerClusterGroup==="function"
+    ?L.markerClusterGroup({chunkedLoading:true,maxClusterRadius:50,showCoverageOnHover:false})
+    :L.layerGroup();
+  cluster.addTo(map);renderMarkers();applySea();startGPS();
+
+  map.on("click",async e=>{
+    $("searchBox").hidden=true;
+    const {lat,lng}=e.latlng;
+    const popup=L.popup({maxWidth:290}).setLatLng(e.latlng)
+      .setContent(escapeHTML(t("loading"))).openOn(map);
+    try{
+      const data=await fetchWeatherMarine(lat,lng);
+      if(!map.hasLayer(popup))return;
+      const c=data.weather.current,mc=data.marine?.current;
+      popup.setContent(`<div dir="${lang==="ar"?"rtl":"ltr"}">
+        <b>${escapeHTML(weatherLabel(c.weather_code))}</b>
+        <div class="popup-row"><span>${t("temperature")}</span><b>${num(c.temperature_2m)} °C</b></div>
+        <div class="popup-row"><span>${t("windSpeed")}</span><b>${num(c.wind_speed_10m)} ${unit(data.weather,"wind_speed_10m","km/h")}</b></div>
+        <div class="popup-row"><span>${t("waveHeight")}</span><b>${num(mc?.wave_height)} ${unit(data.marine,"wave_height")}</b></div>
+        <div class="muted">${t("source")}<br>${t("disclaimer")}</div>
+      </div>`);
+    }catch{
+      if(map.hasLayer(popup))popup.setContent(escapeHTML(t("error")));
+    }
+  });
+}
 </script>
 </body>
 </html>
