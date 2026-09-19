@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>💡 نصائح الصيد — للصيادين</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: "Cairo", sans-serif; }
+    body {
+      background: linear-gradient(180deg, #1a2a3a 0%, #16303e 100%);
+      min-height: 100vh; color: #fff; padding: 15px; padding-bottom: 40px;
+    }
+    .container { max-width: 600px; margin: 0 auto; }
+
+    .header {
+      text-align: center; padding: 18px 0 10px;
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+    }
+    .header h1 { font-size: 22px; font-weight: 700; }
+    .back-link {
+      position: fixed; top: 15px; left: 15px; z-index: 50;
+      background: rgba(255,255,255,0.12); border-radius: 50%;
+      width: 42px; height: 42px; display: flex; align-items: center; justify-content: center;
+      color: #fff; text-decoration: none; font-size: 20px;
+    }
+
+    .card {
+      background: rgba(255,255,255,0.08); border-radius: 14px;
+      padding: 16px; margin-bottom: 14px;
+    }
+    .card h2 { font-size: 16px; margin-bottom: 10px; }
+    .card .val { font-size: 26px; font-weight: 700; }
+    .card .unit { font-size: 14px; color: #9fc; font-weight: 400; }
+    .card .sub { font-size: 13px; color: #b8ccd8; margin-top: 4px; }
+
+    .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* أفضل وقت */
+    .best-window {
+      border: 2px solid rgba(76,217,100,0.5);
+      background: rgba(76,217,100,0.08);
+    }
+    .best-window .score { font-size: 13px; color: #8ee8a1; margin-top: 8px; }
+    .bad-window { border-color: rgba(255,107,107,0.5); background: rgba(255,107,107,0.08); }
+
+    /* جدول 12 ساعة */
+    .score-table { width: 100%; border-collapse: collapse; }
+    .score-table td { padding: 6px 4px; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .bar-bg {
+      background: rgba(255,255,255,0.1); border-radius: 6px;
+      height: 14px; width: 100%; overflow: hidden;
+    }
+    .bar-fill { height: 100%; border-radius: 6px; }
+
+    /* سهم اتجاه الريح */
+    .dir-arrow {
+      font-size: 48px; display: inline-block;
+      transition: transform 0.5s; line-height: 1;
+    }
+    .dir-box { display: flex; align-items: center; justify-content: space-around; }
+
+    /* الخريطة */
+    .map-frame {
+      width: 100%; height: 300px; border: 0; border-radius: 10px;
+    }
+
+    /* نصائح */
+    .tip-item {
+      background: rgba(255,255,255,0.06); border-radius: 10px;
+      padding: 12px; margin-bottom: 10px; font-size: 14px;
+      display: flex; gap: 10px; align-items: flex-start;
+    }
+    .tip-item .t-icon { font-size: 22px; flex-shrink: 0; }
+    .tip-item b { color: #ffd97d; }
+
+    .err {
+      background: rgba(255,107,107,0.15); color: #ffb3b3;
+      padding: 10px; border-radius: 10px; font-size: 13px;
+      display: none; margin-bottom: 12px; text-align: center;
+    }
+    .section-title { font-size: 15px; color: #8fd3f4; margin: 20px 0 10px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <a href="index.html" class="back-link">→</a>
+
+  <div class="container">
+    <div class="header">
+      <span style="font-size:26px">🎣</span>
+      <h1>أدوات ونصائح الصيد</h1>
+    </div>
+
+    <div class="err" id="errBox"></div>
+
+    <!-- شروق / غروب -->
+    <div class="row2">
+      <div class="card">
+        <h2>🌅 الشروق</h2>
+        <div class="val" id="sunrise">--</div>
+        <div class="sub">أفضل وقت للصيد: قبلها بساعة</div>
+      </div>
+      <div class="card">
+        <h2>🌇 الغروب</h2>
+        <div class="val" id="sunset">--</div>
+        <div class="sub">أفضل وقت للصيد: قبلها بساعتين</div>
+      </div>
+    </div>
+
+    <!-- أفضل وقت للخروج -->
+    <div class="card best-window" id="bestCard">
+      <h2>⏰ أفضل وقت للخروج (24 ساعة القادمة)</h2>
+      <div class="val" id="bestTime">جارٍ التحليل...</div>
+      <div class="score" id="bestScore"></div>
+    </div>
+
+    <!-- جدول النقاط -->
+    <div class="card">
+      <h2>📊 جودة الساعات القادمة</h2>
+      <table class="score-table" id="scoreTable"></table>
+    </div>
+
+    <!-- اتجاه الريح -->
+    <div class="card">
+      <h2>🧭 اتجاه الريح الحالي</h2>
+      <div class="dir-box">
+        <div>
+          <span class="dir-arrow" id="windArrow">⬇️</span>
+          <div class="sub" id="windDirName"></div>
+        </div>
+        <div class="sub" style="max-width:55%">
+          سهم الريح يشير إلى <b style="color:#ffd97d">جهة هبوبها</b>.<br>
+          للخروج من الشاطئ: مواجه للريح ذهابًا، ومساعد للعودة.
+        </div>
+      </div>
+    </div>
+
+    <!-- الخريطة -->
+    <div class="card">
+      <h2>🗺️ موقعك على الخريطة</h2>
+      <iframe id="mapFrame" class="map-frame" loading="lazy"></iframe>
+    </div>
+
+    <!-- نصائح ثابتة -->
+    <div class="section-title">💡 نصائح ذهبية للصيد بالكاياك</div>
+    <div id="tips"></div>
+  </div>
+
+  <script>
+    "use strict";
+
+    var tips = [
+      { icon: "🦺", text: "<b>سترة النجاة دائمًا</b> — 80% من حوادث الكاياك بدونها." },
+      { icon: "📞", text: "<b>أخبر أحدًا بخطتك</b> — المكان ووقت العودة المتوقع." },
+      { icon: "🔋", text: "<b>هاتف مشحون + كيس محكم</b> — وأرقام الطوارئ 193 (سواحل تونس)." },
+      { icon: "💧", text: "<b>ماء وطعام</b> — الشمس والريح تجففانك أسرع مما تظن." },
+      { icon: "🪝", text: "<b>أدوات مقللة</b> — كلما قلّ العدد قلّ التشابك في قارب صغير." },
+      { icon: "⚓", text: "<b>مرساة خفيفة</b> — عند عثورك على نقطة سمكة جيدة، ثبّت مكانك." },
+      { icon: "🐟", text: "<b>موسم السردين (صيف/خريف)</b> أفضل لتنوّع الأسماك قرب السواحل التونسية." },
+      { icon: "🌧️", text: "<b>بعد عاصفة</b> انتظر 24 ساعة — المياه العكرة والتيارات خادعة." }
+    ];
+
+    var dirNames = ["شمالية ⬇️","شمالية شرقية ↙️","شرقية ⬅️","جنوبية شرقية ↖️","جنوبية ⬆️","جنوبية غربية ↗️","غربية ➡️","شمالية غربية ↘️"];
+
+    function showError(msg) {
+      var e = document.getElementById("errBox");
+      e.textContent = msg; e.style.display = "block";
+    }
+
+    /* ===== حساب نقاط جودة الساعة ===== */
+    function hourScore(wave, wind, gust) {
+      if (wave == null || wind == null) return null;
+      var s = 100;
+      s -= Math.min(50, wave * 60);          // الأمواج أهم عامل
+      s -= Math.min(30, wind * 1.2);         // الريح
+      s -= Math.min(20, (gust - wind) * 1.5); // الفرق = تقلبات
+      return Math.max(0, Math.round(s));
+    }
+
+    function barColor(score) {
+      return score >= 70 ? "#4cd964" : score >= 45 ? "#ffcc00" : "#ff6b6b";
+    }
+
+    function init() {
+      /* النصائح */
+      var tipsEl = document.getElementById("tips");
+      tips.forEach(function (t) {
+        var d = document.createElement("div");
+        d.className = "tip-item";
+        d.innerHTML = '<span class="t-icon">' + t.icon + "</span><span>" + t.text + "</span>";
+        tipsEl.appendChild(d);
+      });
+
+      /* الموقع */
+      function proceed(lat, lon) {
+        loadData(lat, lon);
+        document.getElementById("mapFrame").src =
+          "https://www.openstreetmap.org/export/embed.html?bbox=" +
+          (lon - 0.05) + "," + (lat - 0.04) + "," + (lon + 0.05) + "," + (lat + 0.04) +
+          "&layer=mapnik&marker=" + lat + "," + lon;
+      }
+
+      if (!navigator.geolocation) { proceed(36.80, 10.18); return; }
+      navigator.geolocation.getCurrentPosition(
+        function (p) { proceed(p.coords.latitude, p.coords.longitude); },
+        function () { proceed(36.80, 10.18); },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    function loadData(lat, lon) {
+      var url =
+        "https://api.open-meteo.com/v1/forecast" +
+        "?latitude=" + lat.toFixed(3) + "&longitude=" + lon.toFixed(3) +
+        "&hourly=wind_speed_10m,wind_gusts_10m,wind_direction_10m" +
+        "&current=wind_direction_10m" +
+        "&daily=sunrise,sunset" +
+        "&forecast_days=2&timezone=auto";
+
+      var marineUrl =
+        "https://marine-api.open-meteo.com/v1/marine" +
+        "?latitude=" + lat.toFixed(3) + "&longitude=" + lon.toFixed(3) +
+        "&hourly=wave_height&forecast_days=2&timezone=auto";
+
+      var wP = fetch(url).then(function (r) { return r.json(); });
+      var mP = fetch(marineUrl).then(function (r) { return r.json(); })
+        .catch(function () { return null; });
+
+      Promise.all([wP, mP]).then(function (res) {
+        renderAll(res[0], res[1]);
+      }).catch(function (e) {
+        showError("تعذّر جلب البيانات: " + e.message);
+      });
+    }
+
+    function renderAll(w, m) {
+      /* الشروق والغروب */
+      document.getElementById("sunrise").textContent = w.daily.sunrise[0].slice(11, 16);
+      document.getElementById("sunset").textContent = w.daily.sunset[0].slice(11, 16);
+
+      /* اتجاه الريح */
+      var deg = w.current.wind_direction_10m;
+      var idx = Math.round(deg / 45) % 8;
+      var arrow = document.getElementById("windArrow");
+      var names = ["⬇️","↙️","⬅️","↖️","⬆️","↗️","➡️","↘️"];
+      arrow.textContent = names[idx];
+      document.getElementById("windDirName").textContent = "ريح " + dirNames[idx] + " (" + Math.round(deg) + "°)";
+
+      /* تحليل الساعات */
+      var wh = w.hourly;
+      var mh = (m && m.hourly && m.hourly.wave_height) ? m.hourly.wave_height : null;
+
+      var nowKey = new Date().toISOString().slice(0, 13);
+      var start = -1;
+      for (var i = 0; i < wh.time.length; i++) {
+        if (wh.time[i].slice(0, 13) === nowKey) { start = i; break; }
+      }
+      if (start === -1) start = 0;
+
+      var count = Math.min(24, wh.time.length - start);
+      var table = document.getElementById("scoreTable");
+      table.innerHTML = "";
+
+      var bestIdx = -1, bestScore = -1;
+      var rows = [];
+
+      for (var j = 0; j < count; j++) {
+        var k = start + j;
+        var wind = wh.wind_speed_10m[k];
+        var gust = wh.wind_gusts_10m[k];
+        var wave = mh ? mh[k] : 0;
+        var score = hourScore(wave, wind, gust);
+        if (score === null) continue;
+
+        rows.push({ time: wh.time[k].slice(11, 16), score: score });
+
+        /* أفضل نافذة: فقط ساعات النهار (بعد الشروق بساعة، قبل الغروب) */
+        var hh = parseInt(wh.time[k].slice(11, 13), 10);
+        var sunriseH = parseInt(w.daily.sunrise[0].slice(11, 13), 10);
+        var sunsetH = parseInt(w.daily.sunset[0].slice(11, 13), 10);
+        if (hh >= sunriseH && hh < sunsetH && score > bestScore) {
+          bestScore = score;
+          bestIdx = k;
+        }
+      }
+
+      /* عرض أفضل وقت */
+      var bestCard = document.getElementById("bestCard");
+      if (bestIdx !== -1) {
+        document.getElementById("bestTime").textContent = "🕐 " + wh.time[bestIdx].slice(11, 16);
+        document.getElementById("bestScore").textContent =
+          "نقاط الجودة: " + bestScore + "/100 — " +
+          (bestScore >= 70 ? "ظروف ممتازة 🎣" : bestScore >= 45 ? "ظروف مقبولة 👍" : "ظروف ضعيفة، فكّر في تأجيل الخروج");
+        if (bestScore < 45) bestCard.classList.add("bad-window");
+      } else {
+        document.getElementById("bestTime").textContent = "لا توجد نافذة مناسبة اليوم";
+      }
+
+      /* جدول الساعات */
+      rows.forEach(function (r) {
+        var tr = document.createElement("tr");
+        tr.innerHTML =
+          "<td>" + r.time + "</td>" +
+          '<td><div class="bar-bg"><div class="bar-fill" style="width:' +
+          r.score + "%; background:" + barColor(r.score) + '"></div></div></td>' +
+          "<td>" + r.score + "</td>";
+        table.appendChild(tr);
+      });
+    }
+
+    init();
+  </script>
+</body>
+</html>
