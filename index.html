@@ -8,7 +8,7 @@
 
   <!-- إعدادات العرض على الهاتف -->
   <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+        content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
   <!-- معلومات التطبيق -->
   <meta name="application-name" content="Redline Fishing">
@@ -17,7 +17,8 @@
   <meta name="theme-color" content="#062B45">
 
   <!-- دعم iOS -->
-  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" contentyes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Redline Fishing">
 
@@ -297,23 +298,35 @@
   <script src="flutter_bootstrap.js" async></script>
 
   <script>
-    window.addEventListener("load", function () {
-      const loadingScreen = document.getElementById("loading-screen");
-
-      /*
-       * يخفي شاشة التحميل بعد تشغيل Flutter.
-       * التأخير القصير يمنع ظهور انتقال مفاجئ للمستخدم.
-       */
-      setTimeout(function () {
-        if (loadingScreen) {
-          loadingScreen.classList.add("hidden");
-
-          setTimeout(function () {
-            loadingScreen.remove();
-          }, 500);
-        }
-      }, 900);
+    /*
+     * إخفاء شاشة التحميل عند رسم أول إطار من Flutter فعليًا.
+     * هذا يضمن عدم ظهور خلفية فارغة للمستخدم.
+     */
+    window.addEventListener("flutter-first-frame", function () {
+      hideLoadingScreen();
     });
+
+    /*
+     * حل احتياطي: إذا لم يُطلق حدث Flutter لأي سبب
+     * (خطأ في التحميل مثلًا)، نخفي الشاشة بعد 8 ثوانٍ
+     * حتى لا يبقى المستخدم عالقًا في شاشة التحميل.
+     */
+    setTimeout(hideLoadingScreen, 8000);
+
+    var screenHidden = false;
+
+    function hideLoadingScreen() {
+      if (screenHidden) return;
+      screenHidden = true;
+
+      var loadingScreen = document.getElementById("loading-screen");
+      if (loadingScreen) {
+        loadingScreen.classList.add("hidden");
+        setTimeout(function () {
+          loadingScreen.remove();
+        }, 500);
+      }
+    }
 
     /*
      * التعامل مع أخطاء تحميل Flutter Web
