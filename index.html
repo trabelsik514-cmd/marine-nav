@@ -1,124 +1,326 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Redline Fishing Pro</title>
-    <!-- Leaflet CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <style>
-        :root { --bg: #f2f5f9; --card: #fff; --text: #203449; --accent: #d73546; }
-        body.dark-mode { --bg: #1a1a1a; --card: #2d2d2d; --text: #f0f0f0; }
-        body { font-family: sans-serif; background: var(--bg); color: var(--text); margin: 0; transition: 0.3s; }
-        header { padding: 15px; background: var(--card); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        #map { position: fixed; top: 70px; bottom: 70px; width: 100%; z-index: 1; }
-        nav { position: fixed; bottom: 0; width: 100%; height: 70px; display: flex; background: var(--card); align-items: center; justify-content: space-around; z-index: 1000; box-shadow: 0 -2px 5px rgba(0,0,0,0.1); }
-        button { padding: 8px 15px; border-radius: 8px; border: none; background: var(--accent); color: white; cursor: pointer; }
-        .modal { display: none; position: fixed; top: 20%; left: 10%; width: 80%; background: var(--card); padding: 20px; z-index: 2000; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.3); }
-    </style>
+  <base href="$FLUTTER_BASE_HREF">
+
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+
+  <!-- إعدادات العرض على الهاتف -->
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <!-- معلومات التطبيق -->
+  <meta name="application-name" content="Redline Fishing">
+  <meta name="description"
+        content="تطبيق مساعد الصيد بالكاياك لمراقبة الطقس والبحر ومستوى الأمان">
+  <meta name="theme-color" content="#062B45">
+
+  <!-- دعم iOS -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Redline Fishing">
+
+  <!-- أيقونة التطبيق -->
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+  <link rel="icon" type="image/png" href="favicon.png">
+
+  <!-- ملف Manifest الخاص بـ Flutter -->
+  <link rel="manifest" href="manifest.json">
+
+  <title>Redline Fishing</title>
+
+  <style>
+    :root {
+      --navy: #062B45;
+      --navy-light: #0B4264;
+      --turquoise: #16A6A3;
+      --redline: #E53935;
+      --white: #F4F8FA;
+      --muted: #AFC3CD;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      background: var(--navy);
+      font-family:
+        Arial,
+        "Tahoma",
+        "Segoe UI",
+        sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      direction: rtl;
+    }
+
+    /* شاشة التحميل */
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(
+          circle at top right,
+          #0d5679 0%,
+          var(--navy) 48%,
+          #031d31 100%
+        );
+      transition: opacity 0.4s ease, visibility 0.4s ease;
+    }
+
+    #loading-screen.hidden {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    .loading-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 90%;
+      max-width: 360px;
+      text-align: center;
+      color: var(--white);
+    }
+
+    .logo-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 126px;
+      height: 126px;
+      margin-bottom: 24px;
+      border: 2px solid rgba(255, 255, 255, 0.13);
+      border-radius: 34px;
+      background: rgba(255, 255, 255, 0.07);
+      box-shadow:
+        0 16px 40px rgba(0, 0, 0, 0.25),
+        inset 0 0 24px rgba(255, 255, 255, 0.04);
+      overflow: hidden;
+    }
+
+    .logo-wrapper::before {
+      content: "";
+      position: absolute;
+      right: -24px;
+      bottom: 20px;
+      width: 170px;
+      height: 4px;
+      background: var(--redline);
+      transform: rotate(-14deg);
+      border-radius: 50%;
+      box-shadow: 0 0 12px rgba(229, 57, 53, 0.7);
+    }
+
+    .logo-wrapper::after {
+      content: "";
+      position: absolute;
+      right: 20px;
+      bottom: 30px;
+      width: 70px;
+      height: 19px;
+      background: var(--white);
+      border-radius: 75% 18% 35% 65%;
+      transform: rotate(-5deg);
+      box-shadow: 0 4px 0 rgba(22, 166, 163, 0.75);
+    }
+
+    .kayak-line {
+      position: absolute;
+      right: 38px;
+      bottom: 52px;
+      z-index: 2;
+      width: 54px;
+      height: 4px;
+      background: var(--navy);
+      border-radius: 50%;
+      transform: rotate(-7deg);
+    }
+
+    .location-pin {
+      position: absolute;
+      top: 18px;
+      left: 24px;
+      z-index: 3;
+      width: 25px;
+      height: 25px;
+      background: var(--redline);
+      border: 3px solid var(--white);
+      border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg);
+      box-shadow: 0 4px 12px rgba(229, 57, 53, 0.5);
+    }
+
+    .location-pin::after {
+      content: "";
+      position: absolute;
+      top: 6px;
+      left: 6px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--white);
+    }
+
+    .app-name {
+      margin: 0;
+      color: var(--white);
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: 0.3px;
+    }
+
+    .app-name span {
+      color: var(--redline);
+    }
+
+    .app-subtitle {
+      margin: 9px 0 25px;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .loading-bar {
+      width: 190px;
+      height: 4px;
+      overflow: hidden;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .loading-progress {
+      width: 45%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(
+        90deg,
+        var(--turquoise),
+        var(--redline)
+      );
+      animation: loading 1.2s infinite ease-in-out;
+    }
+
+    .loading-text {
+      margin-top: 14px;
+      color: #8eaab8;
+      font-size: 12px;
+    }
+
+    @keyframes loading {
+      0% {
+        transform: translateX(-230%);
+      }
+
+      50% {
+        transform: translateX(100%);
+      }
+
+      100% {
+        transform: translateX(230%);
+      }
+    }
+
+    /* منع تحديد النص أثناء الاستخدام */
+    flutter-view,
+    flt-glass-pane {
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* تحسين مظهر شريط التمرير */
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: var(--navy);
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: var(--navy-light);
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--turquoise);
+    }
+  </style>
 </head>
+
 <body>
+  <!-- شاشة التحميل قبل تشغيل Flutter -->
+  <div id="loading-screen">
+    <div class="loading-content">
+      <div class="logo-wrapper" aria-label="Redline Fishing Logo">
+        <div class="kayak-line"></div>
+        <div class="location-pin"></div>
+      </div>
 
-<header>
-    <div id="title">Redline Fishing</div>
-    <div>
-        <button id="langBtn">Français</button>
-        <button id="themeBtn">🌙</button>
+      <h1 class="app-name">
+        Redline <span>Fishing</span>
+      </h1>
+
+      <p class="app-subtitle">
+        مساعدك الذكي للصيد الآمن بالكاياك
+      </p>
+
+      <div class="loading-bar">
+        <div class="loading-progress"></div>
+      </div>
+
+      <div class="loading-text">
+        جارٍ تجهيز التطبيق...
+      </div>
     </div>
-</header>
+  </div>
 
-<div id="map"></div>
+  <!-- نقطة تشغيل تطبيق Flutter -->
+  <script src="flutter_bootstrap.js" async></script>
 
-<nav>
-    <button id="locateBtn">📍</button>
-    <button id="importBtn">📁</button>
-    <button id="exportBtn">📤</button>
-    <input type="file" id="fileInput" style="display:none" accept=".json">
-</nav>
+  <script>
+    window.addEventListener("load", function () {
+      const loadingScreen = document.getElementById("loading-screen");
 
-<!-- ملفات JS -->
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-    let map = L.map('map').setView([36.77, 10.22], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+      /*
+       * يخفي شاشة التحميل بعد تشغيل Flutter.
+       * التأخير القصير يمنع ظهور انتقال مفاجئ للمستخدم.
+       */
+      setTimeout(function () {
+        if (loadingScreen) {
+          loadingScreen.classList.add("hidden");
 
-    let points = JSON.parse(localStorage.getItem('fishingPoints')) || [];
-
-    // --- الوظائف الرئيسية ---
-
-    // 1. اختيار الموقع من الخريطة
-    map.on('click', function(e) {
-        let name = prompt("أدخل اسم نقطة الصيد:");
-        if (name) {
-            let newPoint = { id: Date.now(), name, lat: e.latlng.lat, lon: e.latlng.lng };
-            points.push(newPoint);
-            saveAndRender();
+          setTimeout(function () {
+            loadingScreen.remove();
+          }, 500);
         }
+      }, 900);
     });
 
-    // 2. تحديث الخريطة (عرض النقاط)
-    function saveAndRender() {
-        localStorage.setItem('fishingPoints', JSON.stringify(points));
-        renderPoints();
-    }
-
-    function renderPoints() {
-        map.eachLayer(layer => { if (layer instanceof L.Marker) map.removeLayer(layer); });
-        points.forEach(p => {
-            let marker = L.marker([p.lat, p.lon]).addTo(map);
-            // 3. تحرير النقاط (داخل الـ Popup)
-            marker.bindPopup(`
-                <b>${p.name}</b><br>
-                <button onclick="editPoint(${p.id})">تعديل</button>
-                <button onclick="deletePoint(${p.id})">حذف</button>
-                <div id="weather-${p.id}">جاري جلب الطقس...</div>
-            `).on('popupopen', () => fetchWeather(p));
-        });
-    }
-
-    // جلب الطقس بالساعات (API)
-    async function fetchWeather(p) {
-        try {
-            const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${p.lat}&longitude=${p.lon}&hourly=temperature_2m`);
-            const data = await res.json();
-            const temp = data.hourly.temperature_2m[0] ?? "—";
-            document.getElementById(`weather-${p.id}`).innerHTML = `حرارة: ${temp}°C`;
-        } catch {
-            document.getElementById(`weather-${p.id}`).innerHTML = "تعذر جلب الطقس";
-        }
-    }
-
-    // أدوات التحرير والحذف
-    window.editPoint = (id) => {
-        let p = points.find(p => p.id === id);
-        let newName = prompt("تعديل الاسم:", p.name);
-        if (newName) { p.name = newName; saveAndRender(); }
-    };
-    window.deletePoint = (id) => {
-        points = points.filter(p => p.id !== id);
-        saveAndRender();
-    };
-
-    // 4. استيراد البيانات
-    document.getElementById('importBtn').onclick = () => document.getElementById('fileInput').click();
-    document.getElementById('fileInput').onchange = (e) => {
-        let file = e.target.files[0];
-        let reader = new FileReader();
-        reader.onload = (e) => {
-            points = JSON.parse(e.target.result);
-            saveAndRender();
-        };
-        reader.readAsText(file);
-    };
-
-    // تصدير البيانات
-    document.getElementById('exportBtn').onclick = () => {
-        let blob = new Blob([JSON.stringify(points)], {type: 'application/json'});
-        let url = URL.createObjectURL(blob);
-        let a = document.createElement('a'); a.href = url; a.download = 'points.json'; a.click();
-    };
-
-    renderPoints();
-</script>
+    /*
+     * التعامل مع أخطاء تحميل Flutter Web
+     */
+    window.addEventListener("error", function (event) {
+      console.error("Redline Fishing loading error:", event.error || event.message);
+    });
+  </script>
 </body>
 </html>
