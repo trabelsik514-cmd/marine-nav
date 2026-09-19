@@ -110,7 +110,7 @@
       font-family: inherit;
     }
     .loc-btn:active { background: rgba(22,166,163,.2); }
-    .loc-text { color: var(--muted); font-size: 12px; margin: 0 0 14px; }
+    .loc-text { color: var(--muted); font-size: 12px; margin: 0 0 14px; line-height: 1.6; }
 
     /* مؤشر الأمان */
     .safety-card {
@@ -124,7 +124,7 @@
     .safety-msg { color: var(--muted); font-size: 13px; line-height: 1.6; margin: 0; }
     .safety-icon { font-size: 44px; }
     .safe    { border-color: rgba(46,158,91,.5) !important; }
-    .safe .safety-status, .safe .safety-icon { color: var(--green, var(--green)); }
+    .safe .safety-status, .safe .safety-icon { color: var(--green); }
     .caution { border-color: rgba(249,168,37,.5) !important; }
     .caution .safety-status, .caution .safety-icon { color: var(--amber); }
     .danger  { border-color: rgba(229,57,53,.6) !important; }
@@ -171,7 +171,6 @@
       color: #ffcdd2; text-align: center; margin: 14px 0;
     }
     .refresh-note { text-align: center; color: #6b8a99; font-size: 11px; margin-top: 20px; }
-    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 4px; vertical-align: middle; }
   </style>
 </head>
 
@@ -179,8 +178,7 @@
   <!-- شاشة التحميل -->
   <div id="loading-screen">
     <div class="loading-content">
-      <div class="logo-wrapper"
-      aria-label="Redline Fishing Logo">
+      <div class="logo-wrapper" aria-label="Redline Fishing Logo">
         <div class="kayak-line"></div>
         <div class="location-pin"></div>
       </div>
@@ -220,7 +218,7 @@
         <div class="value">-- <span class="unit">كم/س</span></div>
       </div>
       <div class="metric" id="mGust">
-        <div class="label">🌪️ الهبّات</div>
+        <div class="label">🌪️ الهباتات</div>
         <div class="value">-- <span class="unit">كم/س</span></div>
       </div>
       <div class="metric" id="mTemp">
@@ -255,16 +253,15 @@
       app.classList.add("visible");
     }
 
-    // مدة قصيرة لشاشة التحميل ثم الإطلاق
     setTimeout(hideLoading, 1800);
 
     /* ===== حدود الأمان Redline ===== */
     var LIMITS = {
-      waveGreen: 0.6,   // أمواج آمنة أقل من
-      waveRed: 1.0,     // أمواج خطرة أكثر من
-      windGreen: 15,    // ريح آمنة أقل من (كم/س)
-      windRed: 25,      // ريح خطرة أكثر من
-      gustRed: 30       // هبّات خطرة
+      waveGreen: 0.6,
+      waveRed: 1.0,
+      windGreen: 15,
+      windRed: 25,
+      gustRed: 30
     };
 
     function assess(wave, wind, gust) {
@@ -287,26 +284,49 @@
     }
 
     function waveClass(wave, wind, gust) {
-      var a = assess(wave, wind, gust);
-      return a.level;
+      return assess(wave, wind, gust).level;
+    }
+
+    /* ===== نقاط بحرية تغطي كل السواحل التونسية ===== */
+    var MARINE_POINTS = [
+      { name: "طبرقة",     lat: 36.95, lon: 8.75 },
+      { name: "بنزرت",     lat: 37.28, lon: 9.87 },
+      { name: "تونس",      lat: 36.83, lon: 10.30 },
+      { name: "نابل",      lat: 36.55, lon: 11.00 },
+      { name: "سوسة",      lat: 35.83, lon: 10.65 },
+      { name: "المنستير",  lat: 35.70, lon: 10.75 },
+      { name: "المهدية",   lat: 35.50, lon: 11.10 },
+      { name: "صفاقس",     lat: 34.70, lon: 10.80 },
+      { name: "جربة",      lat: 33.75, lon: 11.10 },
+      { name: "قابس",      lat: 33.60, lon: 10.95 }
+    ];
+
+    function nearestMarinePoint(lat, lon) {
+      var best = null, bestDist = Infinity;
+      for (var i = 0; i < MARINE_POINTS.length; i++) {
+        var p = MARINE_POINTS[i];
+        var d = (p.lat - lat) * (p.lat - lat) + (p.lon - lon) * (p.lon - lon);
+        if (d < bestDist) { bestDist = d; best = p; }
+      }
+      return best;
     }
 
     /* ===== جلب البيانات ===== */
     function fetchWeather(lat, lon) {
+      var sea = nearestMarinePoint(lat, lon);
+
       var url =
         "https://api.open-meteo.com/v1/forecast" +
         "?latitude=" + lat.toFixed(3) +
         "&longitude=" + lon.toFixed(3) +
         "&current=temperature_2m,wind_speed_10m,wind_gusts_10m" +
-        "&hourly=wave_height,wind_speed_10m,wind_gusts_10m" +
-        "&marine=wave_height,wind_wave_height,swell_wave_height,swell_wave_period" +
+        "&hourly=wind_speed_10m,wind_gusts_10m" +
         "&forecast_days=2&timezone=auto";
 
-      // Open-Meteo: الطقس البحري في API منفصل
       var marineUrl =
         "https://marine-api.open-meteo.com/v1/marine" +
-        "?latitude=" + lat.toFixed(3) +
-        "&longitude=" + lon.toFixed(3) +
+        "?latitude=" + sea.lat.toFixed(3) +
+        "&longitude=" + sea.lon.toFixed(3) +
         "&hourly=wave_height,wind_wave_height,swell_wave_height,swell_wave_period" +
         "&forecast_days=2&timezone=auto";
 
@@ -318,38 +338,35 @@
       var marinePromise = fetch(marineUrl).then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
-      }).catch(function () { return null; }); // البحري اختياري
+      }).catch(function () { return null; });
 
       Promise.all([weatherPromise, marinePromise])
-        .then(function (results) { render(results[0], results[1]); })
+        .then(function (results) { render(results[0], results[1], sea); })
         .catch(function (err) { showError("تعذّر جلب البيانات: " + err.message); });
     }
 
-    function render(weather, marine) {
+    function render(weather, marine, sea) {
       var cur = weather.current;
       var temp = cur.temperature_2m;
       var wind = cur.wind_speed_10m;
       var gust = cur.wind_gusts_10m;
 
-      // بيانات الأمواج (من API البحري إن توفر)
       var wave = null, period = null;
       if (marine && marine.hourly && marine.hourly.wave_height) {
         var mh = marine.hourly;
-        var now = new Date();
-        var idx = nearestHourIndex(mh.time, now);
+        var idx = nearestHourIndex(mh.time, new Date());
         if (idx !== -1 && mh.wave_height[idx] != null) {
           wave = mh.wave_height[idx];
           period = mh.swell_wave_period ? mh.swell_wave_period[idx] : null;
         }
       }
 
-      // في حال عدم توفر بيانات الأمواج
       if (wave === null) {
-        showErrorOnce("بيانات الأمواج غير متوفرة لهذا الموقع (قد تكون بعيدًا عن البحر). التقييم يعتمد على الريح فقط.");
+        showErrorOnce("بيانات الأمواج غير متوفرة حاليًا. التقييم يعتمد على الريح فقط.");
         wave = 0;
       }
 
-      // ===== مؤشر الأمان =====
+      /* مؤشر الأمان */
       var a = assess(wave, wind, gust);
       var card = document.getElementById("safetyCard");
       card.className = "safety-card " + a.level;
@@ -357,7 +374,13 @@
       document.getElementById("safetyStatus").textContent = a.status;
       document.getElementById("safetyMsg").textContent = a.msg;
 
-      // ===== البطاقات =====
+      /* اسم المنطقة البحرية */
+      var locEl = document.getElementById("locText");
+      if (sea && locEl.textContent.indexOf("منطقة") === -1) {
+        locEl.textContent += " — 🌊 منطقة: " + sea.name;
+      }
+
+      /* البطاقات */
       setMetric("mWave", wave.toFixed(2), "م",
         wave > LIMITS.waveRed ? "red" : wave > LIMITS.waveGreen ? "amber" : "green",
         period ? "فترة: " + period.toFixed(0) + " ث" : "");
@@ -367,7 +390,7 @@
         gust > LIMITS.gustRed ? "red" : "green", "");
       setMetric("mTemp", temp.toFixed(1), "°م", "green", "");
 
-      // ===== التوقعات =====
+      /* التوقعات */
       var row = document.getElementById("hoursRow");
       row.innerHTML = "";
       var wh = weather.hourly;
@@ -430,9 +453,8 @@
     /* ===== الموقع ===== */
     function getLocation() {
       if (!navigator.geolocation) {
-        // موقع افتراضي (سواحل تونس) عند عدم توفر GPS
         fetchWeather(36.80, 10.18);
-        updateLocText("الموقع غير متاح — عرض بيانات تونس العاصمة");
+        updateLocText("الموقع غير متاح — عرض بيانات تونس");
         return;
       }
       navigator.geolocation.getCurrentPosition(
@@ -443,7 +465,7 @@
         },
         function () {
           fetchWeather(36.80, 10.18);
-          updateLocText("تم رفض الموقع — عرض بيانات تونس العاصمة");
+          updateLocText("تم رفض الموقع — عرض بيانات تونس");
         },
         { enableHighAccuracy: true, timeout: 10000 }
       );
@@ -458,7 +480,6 @@
       getLocation();
     });
 
-    // التشغيل
     getLocation();
   </script>
 </body>
