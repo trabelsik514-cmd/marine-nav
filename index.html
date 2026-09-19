@@ -2,33 +2,13 @@
 <html lang="ar" dir="rtl">
 <head>
   <base href="/marine-nav/">
-
   <meta charset="UTF-8">
-  <meta http-equiv="X-UA-Compatible" content="IE=edge">
-
-  <!-- إعدادات العرض على الهاتف -->
-  <meta name="viewport"
-        content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-
-  <!-- معلومات التطبيق -->
-  <meta name="application-name" content="Redline Fishing">
-  <meta name="description"
-        content="تطبيق مساعد الصيد بالكاياك لمراقبة الطقس والبحر ومستوى الأمان">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#062B45">
-
-  <!-- دعم iOS -->
-  <meta name="apple-mobile-web-app-capable" contentyes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Redline Fishing">
-
-  <!-- أيقونة التطبيق -->
-  <link rel="apple-touch-icon" href="icons/Icon-192.png">
-  <link rel="icon" type="image/png" href="favicon.png">
-
-  <!-- ملف Manifest الخاص بـ Flutter -->
   <link rel="manifest" href="manifest.json">
-
   <title>Redline Fishing</title>
 
   <style>
@@ -37,303 +17,449 @@
       --navy-light: #0B4264;
       --turquoise: #16A6A3;
       --redline: #E53935;
+      --amber: #F9A825;
+      --green: #2E9E5B;
       --white: #F4F8FA;
       --muted: #AFC3CD;
+      --card: rgba(255,255,255,0.06);
+      --card-border: rgba(255,255,255,0.12);
     }
-
-    * {
-      box-sizing: border-box;
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      margin: 0; padding: 0; min-height: 100%;
+      background: radial-gradient(circle at top right, #0d5679 0%, var(--navy) 48%, #031d31 100%);
+      color: var(--white);
+      font-family: Arial, "Tahoma", "Segoe UI", sans-serif;
     }
+    body { direction: rtl; }
 
-    html,
-    body {
-      width: 100%;
-      height: 100%;
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background: var(--navy);
-      font-family:
-        Arial,
-        "Tahoma",
-        "Segoe UI",
-        sans-serif;
-      -webkit-tap-highlight-color: transparent;
-    }
-
-    body {
-      direction: rtl;
-    }
-
-    /* شاشة التحميل */
+    /* ===== شاشة التحميل ===== */
     #loading-screen {
-      position: fixed;
-      inset: 0;
-      z-index: 9999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background:
-        radial-gradient(
-          circle at top right,
-          #0d5679 0%,
-          var(--navy) 48%,
-          #031d31 100%
-        );
-      transition: opacity 0.4s ease, visibility 0.4s ease;
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; align-items: center; justify-content: center;
+      background: radial-gradient(circle at top right, #0d5679 0%, var(--navy) 48%, #031d31 100%);
+      transition: opacity .4s ease, visibility .4s ease;
     }
-
-    #loading-screen.hidden {
-      opacity: 0;
-      visibility: hidden;
-      pointer-events: none;
-    }
-
-    .loading-content {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      width: 90%;
-      max-width: 360px;
-      text-align: center;
-      color: var(--white);
-    }
-
+    #loading-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+    .loading-content { display: flex; flex-direction: column; align-items: center; width: 90%; max-width: 360px; text-align: center; }
     .logo-wrapper {
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      width: 126px;
-      height: 126px;
-      margin-bottom: 24px;
-      border: 2px solid rgba(255, 255, 255, 0.13);
-      border-radius: 34px;
-      background: rgba(255, 255, 255, 0.07);
-      box-shadow:
-        0 16px 40px rgba(0, 0, 0, 0.25),
-        inset 0 0 24px rgba(255, 255, 255, 0.04);
+      position: relative; display: flex; align-items: center; justify-content: center;
+      width: 126px; height: 126px; margin-bottom: 24px;
+      border: 2px solid rgba(255,255,255,0.13); border-radius: 34px;
+      background: rgba(255,255,255,0.07);
+      box-shadow: 0 16px 40px rgba(0,0,0,.25), inset 0 0 24px rgba(255,255,255,.04);
       overflow: hidden;
     }
-
     .logo-wrapper::before {
-      content: "";
-      position: absolute;
-      right: -24px;
-      bottom: 20px;
-      width: 170px;
-      height: 4px;
-      background: var(--redline);
-      transform: rotate(-14deg);
-      border-radius: 50%;
-      box-shadow: 0 0 12px rgba(229, 57, 53, 0.7);
+      content: ""; position: absolute; right: -24px; bottom: 20px;
+      width: 170px; height: 4px; background: var(--redline);
+      transform: rotate(-14deg); border-radius: 50%;
+      box-shadow: 0 0 12px rgba(229,57,53,.7);
     }
-
     .logo-wrapper::after {
-      content: "";
-      position: absolute;
-      right: 20px;
-      bottom: 30px;
-      width: 70px;
-      height: 19px;
-      background: var(--white);
-      border-radius: 75% 18% 35% 65%;
-      transform: rotate(-5deg);
-      box-shadow: 0 4px 0 rgba(22, 166, 163, 0.75);
+      content: ""; position: absolute; right: 20px; bottom: 30px;
+      width: 70px; height: 19px; background: var(--white);
+      border-radius: 75% 18% 35% 65%; transform: rotate(-5deg);
+      box-shadow: 0 4px 0 rgba(22,166,163,.75);
     }
-
     .kayak-line {
-      position: absolute;
-      right: 38px;
-      bottom: 52px;
-      z-index: 2;
-      width: 54px;
-      height: 4px;
-      background: var(--navy);
-      border-radius: 50%;
-      transform: rotate(-7deg);
+      position: absolute; right: 38px; bottom: 52px; z-index: 2;
+      width: 54px; height: 4px; background: var(--navy);
+      border-radius: 50%; transform: rotate(-7deg);
     }
-
     .location-pin {
-      position: absolute;
-      top: 18px;
-      left: 24px;
-      z-index: 3;
-      width: 25px;
-      height: 25px;
-      background: var(--redline);
-      border: 3px solid var(--white);
-      border-radius: 50% 50% 50% 0;
-      transform: rotate(-45deg);
-      box-shadow: 0 4px 12px rgba(229, 57, 53, 0.5);
+      position: absolute; top: 18px; left: 24px; z-index: 3;
+      width: 25px; height: 25px; background: var(--redline);
+      border: 3px solid var(--white); border-radius: 50% 50% 50% 0;
+      transform: rotate(-45deg); box-shadow: 0 4px 12px rgba(229,57,53,.5);
     }
-
     .location-pin::after {
-      content: "";
-      position: absolute;
-      top: 6px;
-      left: 6px;
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--white);
+      content: ""; position: absolute; top: 6px; left: 6px;
+      width: 7px; height: 7px; border-radius: 50%; background: var(--white);
     }
-
-    .app-name {
-      margin: 0;
-      color: var(--white);
-      font-size: 28px;
-      font-weight: 800;
-      letter-spacing: 0.3px;
-    }
-
-    .app-name span {
-      color: var(--redline);
-    }
-
-    .app-subtitle {
-      margin: 9px 0 25px;
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.7;
-    }
-
-    .loading-bar {
-      width: 190px;
-      height: 4px;
-      overflow: hidden;
-      border-radius: 20px;
-      background: rgba(255, 255, 255, 0.15);
-    }
-
+    .app-name { margin: 0; font-size: 28px; font-weight: 800; letter-spacing: .3px; }
+    .app-name span { color: var(--redline); }
+    .app-subtitle { margin: 9px 0 25px; color: var(--muted); font-size: 14px; line-height: 1.7; }
+    .loading-bar { width: 190px; height: 4px; overflow: hidden; border-radius: 20px; background: rgba(255,255,255,.15); }
     .loading-progress {
-      width: 45%;
-      height: 100%;
-      border-radius: inherit;
-      background: linear-gradient(
-        90deg,
-        var(--turquoise),
-        var(--redline)
-      );
+      width: 45%; height: 100%; border-radius: inherit;
+      background: linear-gradient(90deg, var(--turquoise), var(--redline));
       animation: loading 1.2s infinite ease-in-out;
     }
-
-    .loading-text {
-      margin-top: 14px;
-      color: #8eaab8;
-      font-size: 12px;
-    }
-
+    .loading-text { margin-top: 14px; color: #8eaab8; font-size: 12px; }
     @keyframes loading {
-      0% {
-        transform: translateX(-230%);
-      }
-
-      50% {
-        transform: translateX(100%);
-      }
-
-      100% {
-        transform: translateX(230%);
-      }
+      0% { transform: translateX(-230%); }
+      50% { transform: translateX(100%); }
+      100% { transform: translateX(230%); }
     }
 
-    /* منع تحديد النص أثناء الاستخدام */
-    flutter-view,
-    flt-glass-pane {
-      user-select: none;
-      -webkit-user-select: none;
-    }
+    /* ===== التطبيق ===== */
+    #app { display: none; padding: 16px 14px 40px; max-width: 560px; margin: 0 auto; }
+    #app.visible { display: block; }
 
-    /* تحسين مظهر شريط التمرير */
-    ::-webkit-scrollbar {
-      width: 7px;
-      height: 7px;
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
     }
+    header h1 { font-size: 20px; margin: 0; font-weight: 800; }
+    header h1 span { color: var(--redline); }
+    .loc-btn {
+      background: var(--card); border: 1px solid var(--card-border);
+      color: var(--turquoise); border-radius: 12px;
+      padding: 8px 12px; font-size: 13px; cursor: pointer;
+      font-family: inherit;
+    }
+    .loc-btn:active { background: rgba(22,166,163,.2); }
+    .loc-text { color: var(--muted); font-size: 12px; margin: 0 0 14px; }
 
-    ::-webkit-scrollbar-track {
-      background: var(--navy);
+    /* مؤشر الأمان */
+    .safety-card {
+      border: 1px solid var(--card-border); border-radius: 20px;
+      padding: 20px 16px; text-align: center; margin-bottom: 14px;
+      background: var(--card);
     }
+    .safety-status {
+      font-size: 26px; font-weight: 800; margin: 8px 0 4px;
+    }
+    .safety-msg { color: var(--muted); font-size: 13px; line-height: 1.6; margin: 0; }
+    .safety-icon { font-size: 44px; }
+    .safe    { border-color: rgba(46,158,91,.5) !important; }
+    .safe .safety-status, .safe .safety-icon { color: var(--green, var(--green)); }
+    .caution { border-color: rgba(249,168,37,.5) !important; }
+    .caution .safety-status, .caution .safety-icon { color: var(--amber); }
+    .danger  { border-color: rgba(229,57,53,.6) !important; }
+    .danger .safety-status, .danger .safety-icon { color: var(--redline); }
 
-    ::-webkit-scrollbar-thumb {
-      background: var(--navy-light);
-      border-radius: 10px;
+    /* بطاقات القياسات */
+    .grid {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+      margin-bottom: 14px;
     }
+    .metric {
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: 16px; padding: 14px 12px;
+    }
+    .metric .label { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+    .metric .value { font-size: 22px; font-weight: 800; }
+    .metric .unit { font-size: 12px; color: var(--muted); font-weight: normal; }
+    .metric .sub { font-size: 11px; color: #8eaab8; margin-top: 4px; }
+    .metric.red .value { color: var(--redline); }
+    .metric.amber .value { color: var(--amber); }
+    .metric.green .value { color: var(--green); }
 
-    ::-webkit-scrollbar-thumb:hover {
-      background: var(--turquoise);
+    /* جدول الساعات */
+    .section-title { font-size: 15px; font-weight: 700; margin: 18px 0 10px; }
+    .hours {
+      display: flex; gap: 8px; overflow-x: auto; padding-bottom: 8px;
+      -webkit-overflow-scrolling: touch;
     }
+    .hour {
+      min-width: 74px; flex-shrink: 0; text-align: center;
+      background: var(--card); border: 1px solid var(--card-border);
+      border-radius: 14px; padding: 10px 6px;
+    }
+    .hour .h-time { font-size: 11px; color: var(--muted); }
+    .hour .h-wave { font-size: 16px; font-weight: 800; margin: 6px 0 2px; }
+    .hour .h-wind { font-size: 11px; color: #8eaab8; }
+    .hour.safe .h-wave { color: var(--green); }
+    .hour.caution .h-wave { color: var(--amber); }
+    .hour.danger .h-wave { color: var(--redline); }
+
+    .error-box {
+      background: rgba(229,57,53,.15); border: 1px solid rgba(229,57,53,.4);
+      border-radius: 14px; padding: 14px; font-size: 13px;
+      color: #ffcdd2; text-align: center; margin: 14px 0;
+    }
+    .refresh-note { text-align: center; color: #6b8a99; font-size: 11px; margin-top: 20px; }
+    .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 4px; vertical-align: middle; }
   </style>
 </head>
 
 <body>
-  <!-- شاشة التحميل قبل تشغيل Flutter -->
+  <!-- شاشة التحميل -->
   <div id="loading-screen">
     <div class="loading-content">
-      <div class="logo-wrapper" aria-label="Redline Fishing Logo">
+      <div class="logo-wrapper"
+      aria-label="Redline Fishing Logo">
         <div class="kayak-line"></div>
         <div class="location-pin"></div>
       </div>
 
-      <h1 class="app-name">
-        Redline <span>Fishing</span>
-      </h1>
-
-      <p class="app-subtitle">
-        مساعدك الذكي للصيد الآمن بالكاياك
-      </p>
-
+      <h1 class="app-name">Redline <span>Fishing</span></h1>
+      <p class="app-subtitle">مساعدك الذكي للصيد الآمن بالكاياك</p>
       <div class="loading-bar">
         <div class="loading-progress"></div>
       </div>
-
-      <div class="loading-text">
-        جارٍ تجهيز التطبيق...
-      </div>
+      <div class="loading-text">جارٍ تجهيز التطبيق...</div>
     </div>
   </div>
 
-  <!-- نقطة تشغيل تطبيق Flutter -->
-  <script src="flutter_bootstrap.js" async></script>
+  <!-- التطبيق -->
+  <div id="app">
+    <header>
+      <h1>Redline <span>Fishing</span></h1>
+      <button class="loc-btn" id="locBtn">📍 تحديث الموقع</button>
+    </header>
+    <p class="loc-text" id="locText">جارٍ تحديد موقعك...</p>
+
+    <div id="errorBox" class="error-box" style="display:none;"></div>
+
+    <div class="safety-card" id="safetyCard">
+      <div class="safety-icon" id="safetyIcon">⏳</div>
+      <div class="safety-status" id="safetyStatus">جارٍ التقييم...</div>
+      <p class="safety-msg" id="safetyMsg">يرجى الانتظار أثناء جلب بيانات البحر.</p>
+    </div>
+
+    <div class="grid">
+      <div class="metric" id="mWave">
+        <div class="label">🌊 ارتفاع الأمواج</div>
+        <div class="value">-- <span class="unit">م</span></div>
+      </div>
+      <div class="metric" id="mWind">
+        <div class="label">💨 سرعة الريح</div>
+        <div class="value">-- <span class="unit">كم/س</span></div>
+      </div>
+      <div class="metric" id="mGust">
+        <div class="label">🌪️ الهبّات</div>
+        <div class="value">-- <span class="unit">كم/س</span></div>
+      </div>
+      <div class="metric" id="mTemp">
+        <div class="label">🌡️ حرارة الهواء</div>
+        <div class="value">-- <span class="unit">°م</span></div>
+      </div>
+    </div>
+
+    <div class="section-title">⏱️ التوقعات (24 ساعة)</div>
+    <div class="hours" id="hoursRow">
+      <div class="hour"><div class="h-time">...</div></div>
+    </div>
+
+    <div class="refresh-note" id="note">
+      البيانات من Open-Meteo — تُحدَّث تلقائيًا كل 30 دقيقة
+    </div>
+  </div>
 
   <script>
-    /*
-     * إخفاء شاشة التحميل عند رسم أول إطار من Flutter فعليًا.
-     * هذا يضمن عدم ظهور خلفية فارغة للمستخدم.
-     */
-    window.addEventListener("flutter-first-frame", function () {
-      hideLoadingScreen();
-    });
+    "use strict";
 
-    /*
-     * حل احتياطي: إذا لم يُطلق حدث Flutter لأي سبب
-     * (خطأ في التحميل مثلًا)، نخفي الشاشة بعد 8 ثوانٍ
-     * حتى لا يبقى المستخدم عالقًا في شاشة التحميل.
-     */
-    setTimeout(hideLoadingScreen, 8000);
+    var loadingHidden = false;
+    function hideLoading() {
+      if (loadingHidden) return;
+      loadingHidden = true;
+      var ls = document.getElementById("loading-screen");
+      if (ls) {
+        ls.classList.add("hidden");
+        setTimeout(function () { ls.remove(); }, 500);
+      }
+      var app = document.getElementById("app");
+      app.classList.add("visible");
+    }
 
-    var screenHidden = false;
+    // مدة قصيرة لشاشة التحميل ثم الإطلاق
+    setTimeout(hideLoading, 1800);
 
-    function hideLoadingScreen() {
-      if (screenHidden) return;
-      screenHidden = true;
+    /* ===== حدود الأمان Redline ===== */
+    var LIMITS = {
+      waveGreen: 0.6,   // أمواج آمنة أقل من
+      waveRed: 1.0,     // أمواج خطرة أكثر من
+      windGreen: 15,    // ريح آمنة أقل من (كم/س)
+      windRed: 25,      // ريح خطرة أكثر من
+      gustRed: 30       // هبّات خطرة
+    };
 
-      var loadingScreen = document.getElementById("loading-screen");
-      if (loadingScreen) {
-        loadingScreen.classList.add("hidden");
-        setTimeout(function () {
-          loadingScreen.remove();
-        }, 500);
+    function assess(wave, wind, gust) {
+      if (wave > LIMITS.waveRed || wind > LIMITS.windRed || gust > LIMITS.gustRed) {
+        return {
+          level: "danger", icon: "🔴", status: "خطر — لا تخرج",
+          msg: "الظروف البحرية خطيرة على الكاياك. أجّل رحلتك."
+        };
+      }
+      if (wave > LIMITS.waveGreen || wind > LIMITS.windGreen || gust > LIMITS.windRed) {
+        return {
+          level: "caution", icon: "🟡", status: "حذر",
+          msg: "ظروف متوسطة. اخرج بحذر، قرب الشاطئ، وارتدِ سترة النجاة."
+        };
+      }
+      return {
+        level: "safe", icon: "🟢", status: "آمن",
+        msg: "الظروف مناسبة للصيد بالكاياك. لا تنسَ سترة النجاة والماء!"
+      };
+    }
+
+    function waveClass(wave, wind, gust) {
+      var a = assess(wave, wind, gust);
+      return a.level;
+    }
+
+    /* ===== جلب البيانات ===== */
+    function fetchWeather(lat, lon) {
+      var url =
+        "https://api.open-meteo.com/v1/forecast" +
+        "?latitude=" + lat.toFixed(3) +
+        "&longitude=" + lon.toFixed(3) +
+        "&current=temperature_2m,wind_speed_10m,wind_gusts_10m" +
+        "&hourly=wave_height,wind_speed_10m,wind_gusts_10m" +
+        "&marine=wave_height,wind_wave_height,swell_wave_height,swell_wave_period" +
+        "&forecast_days=2&timezone=auto";
+
+      // Open-Meteo: الطقس البحري في API منفصل
+      var marineUrl =
+        "https://marine-api.open-meteo.com/v1/marine" +
+        "?latitude=" + lat.toFixed(3) +
+        "&longitude=" + lon.toFixed(3) +
+        "&hourly=wave_height,wind_wave_height,swell_wave_height,swell_wave_period" +
+        "&forecast_days=2&timezone=auto";
+
+      var weatherPromise = fetch(url).then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      });
+
+      var marinePromise = fetch(marineUrl).then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      }).catch(function () { return null; }); // البحري اختياري
+
+      Promise.all([weatherPromise, marinePromise])
+        .then(function (results) { render(results[0], results[1]); })
+        .catch(function (err) { showError("تعذّر جلب البيانات: " + err.message); });
+    }
+
+    function render(weather, marine) {
+      var cur = weather.current;
+      var temp = cur.temperature_2m;
+      var wind = cur.wind_speed_10m;
+      var gust = cur.wind_gusts_10m;
+
+      // بيانات الأمواج (من API البحري إن توفر)
+      var wave = null, period = null;
+      if (marine && marine.hourly && marine.hourly.wave_height) {
+        var mh = marine.hourly;
+        var now = new Date();
+        var idx = nearestHourIndex(mh.time, now);
+        if (idx !== -1 && mh.wave_height[idx] != null) {
+          wave = mh.wave_height[idx];
+          period = mh.swell_wave_period ? mh.swell_wave_period[idx] : null;
+        }
+      }
+
+      // في حال عدم توفر بيانات الأمواج
+      if (wave === null) {
+        showErrorOnce("بيانات الأمواج غير متوفرة لهذا الموقع (قد تكون بعيدًا عن البحر). التقييم يعتمد على الريح فقط.");
+        wave = 0;
+      }
+
+      // ===== مؤشر الأمان =====
+      var a = assess(wave, wind, gust);
+      var card = document.getElementById("safetyCard");
+      card.className = "safety-card " + a.level;
+      document.getElementById("safetyIcon").textContent = a.icon;
+      document.getElementById("safetyStatus").textContent = a.status;
+      document.getElementById("safetyMsg").textContent = a.msg;
+
+      // ===== البطاقات =====
+      setMetric("mWave", wave.toFixed(2), "م",
+        wave > LIMITS.waveRed ? "red" : wave > LIMITS.waveGreen ? "amber" : "green",
+        period ? "فترة: " + period.toFixed(0) + " ث" : "");
+      setMetric("mWind", wind.toFixed(1), "كم/س",
+        wind > LIMITS.windRed ? "red" : wind > LIMITS.windGreen ? "amber" : "green", "");
+      setMetric("mGust", gust.toFixed(1), "كم/س",
+        gust > LIMITS.gustRed ? "red" : "green", "");
+      setMetric("mTemp", temp.toFixed(1), "°م", "green", "");
+
+      // ===== التوقعات =====
+      var row = document.getElementById("hoursRow");
+      row.innerHTML = "";
+      var wh = weather.hourly;
+      var start = nearestHourIndex(wh.time, new Date());
+      if (start === -1) start = 0;
+      var count = Math.min(24, wh.time.length - start);
+
+      for (var i = start; i < start + count; i++) {
+        var hw = wh.wind_speed_10m[i];
+        var hg = wh.wind_gusts_10m[i];
+        var hwv = (marine && marine.hourly && marine.hourly.wave_height)
+          ? marine.hourly.wave_height[i] : null;
+
+        var displayWave = (hwv != null) ? hwv : 0;
+        var cls = waveClass(displayWave, hw, hg);
+
+        var div = document.createElement("div");
+        div.className = "hour " + cls;
+        div.innerHTML =
+          '<div class="h-time">' + wh.time[i].slice(11, 16) + "</div>" +
+          '<div class="h-wave">' + (hwv != null ? hwv.toFixed(1) + " م" : "—") + "</div>" +
+          '<div class="h-wind">' + hw.toFixed(0) + " كم/س</div>";
+        row.appendChild(div);
       }
     }
 
-    /*
-     * التعامل مع أخطاء تحميل Flutter Web
-     */
-    window.addEventListener("error", function (event) {
-      console.error("Redline Fishing loading error:", event.error || event.message);
+    function setMetric(id, value, unit, cls, sub) {
+      var el = document.getElementById(id);
+      el.className = "metric " + cls;
+      el.innerHTML =
+        '<div class="label">' + el.querySelector(".label").textContent + "</div>" +
+        '<div class="value">' + value + ' <span class="unit">' + unit + "</span></div>" +
+        (sub ? '<div class="sub">' + sub + "</div>" : "");
+    }
+
+    function nearestHourIndex(times, target) {
+      var targetKey = target.toISOString().slice(0, 13);
+      for (var i = 0; i < times.length; i++) {
+        if (times[i].slice(0, 13) === targetKey) return i;
+      }
+      return -1;
+    }
+
+    var errorShown = false;
+    function showErrorOnce(msg) {
+      if (errorShown) return;
+      errorShown = true;
+      showError(msg);
+      setTimeout(function () {
+        document.getElementById("errorBox").style.display = "none";
+      }, 10000);
+    }
+
+    function showError(msg) {
+      var box = document.getElementById("errorBox");
+      box.textContent = msg;
+      box.style.display = "block";
+    }
+
+    /* ===== الموقع ===== */
+    function getLocation() {
+      if (!navigator.geolocation) {
+        // موقع افتراضي (سواحل تونس) عند عدم توفر GPS
+        fetchWeather(36.80, 10.18);
+        updateLocText("الموقع غير متاح — عرض بيانات تونس العاصمة");
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        function (pos) {
+          fetchWeather(pos.coords.latitude, pos.coords.longitude);
+          updateLocText("📍 " + pos.coords.latitude.toFixed(3) + "° , " +
+            pos.coords.longitude.toFixed(3) + "°");
+        },
+        function () {
+          fetchWeather(36.80, 10.18);
+          updateLocText("تم رفض الموقع — عرض بيانات تونس العاصمة");
+        },
+        { enableHighAccuracy: true, timeout: 10000 }
+      );
+    }
+
+    function updateLocText(t) {
+      document.getElementById("locText").textContent = t;
+    }
+
+    document.getElementById("locBtn").addEventListener("click", function () {
+      updateLocText("جارٍ تحديد موقعك...");
+      getLocation();
     });
+
+    // التشغيل
+    getLocation();
   </script>
 </body>
 </html>
